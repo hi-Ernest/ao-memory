@@ -1,0 +1,136 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  background: #1a1f35;
+  overflow-x: hidden;
+}
+
+/* Glow animation for title */
+@keyframes glow {
+  from {
+    text-shadow: 0 0 20px rgba(34, 197, 194, 0.5), 0 0 30px rgba(34, 197, 194, 0.4), 0 0 40px rgba(34, 197, 194, 0.3);
+  }
+  to {
+    text-shadow: 0 0 30px rgba(34, 197, 194, 0.8), 0 0 40px rgba(34, 197, 194, 0.6), 0 0 50px rgba(34, 197, 194, 0.4);
+  }
+}
+
+/* Float animation for particles */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-20px) rotate(180deg);
+    opacity: 0.8;
+  }
+}
+
+/* Pulse animation for borders */
+@keyframes pulse {
+  0%, 100% {
+    border-color: rgba(34, 197, 194, 0.3);
+    box-shadow: 0 0 20px rgba(34, 197, 194, 0.2);
+  }
+  50% {
+    border-color: rgba(34, 197, 194, 0.6);
+    box-shadow: 0 0 30px rgba(34, 197, 194, 0.4);
+  }
+}
+
+/* Button hover effects */
+button:hover {
+  border-color: rgba(34, 197, 194, 0.8) !important;
+  box-shadow: 0 0 30px rgba(34, 197, 194, 0.4) !important;
+  transform: translateY(-2px);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(31, 41, 55, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(34, 197, 194, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 197, 194, 0.7);
+}
+
+/* Wallet Connect Button Override */
+[data-rk] {
+  color: #e2e8f0 !important;
+}
+
+[data-rk] button {
+  background: transparent !important;
+  border: 1px solid rgba(34, 197, 194, 0.4) !important;
+  color: #e2e8f0 !important;
+}
+
+[data-rk] button:hover {
+  background: rgba(34, 197, 194, 0.1) !important;
+  border-color: rgba(34, 197, 194, 0.6) !important;
+  box-shadow: 0 0 20px rgba(34, 197, 194, 0.3) !important;
+}
+
+/* Wallet address display */
+[data-rk] [data-testid="rk-account-button"] {
+  background: rgba(34, 197, 194, 0.1) !important;
+  border: 1px solid rgba(34, 197, 194, 0.4) !important;
+  color: #22c5c2 !important;
+  font-weight: 600 !important;
+}
+
+[data-rk] [data-testid="rk-account-button"]:hover {
+  background: rgba(34, 197, 194, 0.2) !important;
+  box-shadow: 0 0 25px rgba(34, 197, 194, 0.4) !important;
+}
+
+/* Connect button specific styling */
+[data-rk] [data-testid="rk-connect-button"] {
+  background: transparent !important;
+  border: 1px solid rgba(34, 197, 194, 0.5) !important;
+  color: #22c5c2 !important;
+  font-weight: 600 !important;
+}
+
+[data-rk] [data-testid="rk-connect-button"]:hover {
+  background: rgba(34, 197, 194, 0.1) !important;
+  border-color: rgba(34, 197, 194, 0.7) !important;
+  box-shadow: 0 0 20px rgba(34, 197, 194, 0.3) !important;
+}
+
+/* Wallet text and span elements */
+[data-rk] span {
+  color: #e2e8f0 !important;
+}
+
+[data-rk] [data-testid="rk-account-button"] span {
+  color: #22c5c2 !important;
+  text-shadow: 0 0 10px rgba(34, 197, 194, 0.5) !important;
+}
+
+[data-rk] [data-testid="rk-connect-button"] span {
+  color: #22c5c2 !important;
+  text-shadow: 0 0 10px rgba(34, 197, 194, 0.5) !important;
+}
+
+/* Modal and dropdown styling */
+[data-rk] [data-rk-modal] {
+  background: rgba(31, 41, 55, 0.95) !important;
+  border: 1px solid rgba(34, 197, 194, 0.3) !important;
+  color: #e2e8f0 !important;
+}
+
+/* Override any default text colors */
+[data-rk] * {
+  color: inherit !important;
+}

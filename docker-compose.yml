@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  weaviate:
+    container_name: weaviate
+    image: semitechnologies/weaviate
+    restart: unless-stopped
+    environment:
+      ENABLE_MODULES: "text2vec-ollama"
+      DEFAULT_VECTORIZER_MODULE: "text2vec-ollama"
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      QUERY_DEFAULTS_LIMIT: "25"
+      CLUSTER_HOSTNAME: "node1"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      # Point at the Ollama service name (same compose network)
+      OLLAMA_API_ENDPOINT: "http://ollama:11434"
+    networks:
+      - braindance_net
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+
+  ollama:
+    container_name: ollama
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    networks:
+      - braindance_net
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    entrypoint: ["/bin/sh", "-lc", "\
+      /bin/ollama serve & pid=$!; \
+      sleep 5; \
+      echo '🔴 Retrieve nomic-embed-text model...'; \
+      ollama pull nomic-embed-text; \
+      echo '🟢 Done!'; \
+      wait $pid "]
+
+networks:
+  braindance_net:
+    driver: bridge
+
+volumes:
+  weaviate_data:
+  ollama_data:
+

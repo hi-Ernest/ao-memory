@@ -1,0 +1,29 @@
+{
+  "name": "memory-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc -p .",
+    "init:weaviate": "ts-node scripts/initWeaviate.ts",
+    "test:weaviate": "ts-node test-weaviate.ts",
+    "test:api": "ts-node test-api.ts",
+    "test:advanced": "ts-node test-advanced.ts"
+  },
+  "dependencies": {
+    "@permaweb/aoconnect": "^0.0.55",
+    "arweave": "^1.14.4",
+    "express": "^4.19.2",
+    "openai": "^4.56.0",
+    "weaviate-client": "^3.8.1",
+    "@langchain/core": "^0.2.31",
+    "@langchain/openai": "^0.2.8"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.6.3"
+  }
+}
