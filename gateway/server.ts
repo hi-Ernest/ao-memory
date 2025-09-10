@@ -1,6 +1,6 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import * as crypto from 'node:crypto';
-const Arweave = require('arweave');
+import Arweave from 'arweave';
 import weaviate from 'weaviate-client';
 import { message, result, createDataItemSigner } from '@permaweb/aoconnect';
 import OpenAI from 'openai';
@@ -12,6 +12,10 @@ import {
   episodicRecall, 
   episodicSystemPrompt 
 } from './reflection.js';
+import dotenv from 'dotenv';
+
+// 加载 .env 文件
+dotenv.config();
 
 // Env
 const {
@@ -22,8 +26,9 @@ const {
   WEAVIATE_API_KEY,
   AO_WALLET_JSON,
   MEMORY_PROCESS_ID,
-  MARKET_PROCESS_ID
-} = process.env as Record<string, string | undefined>;
+  MARKET_PROCESS_ID,
+  PORT = '8787'
+} = process.env;
 
 if (!OPENAI_API_KEY || !AO_WALLET_JSON || !MEMORY_PROCESS_ID || !MARKET_PROCESS_ID) {
   throw new Error('Missing required env vars: OPENAI_API_KEY, AO_WALLET_JSON, MEMORY_PROCESS_ID, MARKET_PROCESS_ID');
@@ -44,16 +49,21 @@ const globalWhatToAvoid = new Map<string, Set<string>>();
 // 初始化 Weaviate 客户端
 async function initWeaviate() {
   try {
+    // 解析 WEAVIATE_URL 获取 host 和 port
+    const weaviateUrl = new URL(WEAVIATE_URL || 'http://localhost:8080');
+    const host = weaviateUrl.hostname;
+    const port = parseInt(weaviateUrl.port) || 8080;
+    
     wclient = await weaviate.connectToLocal({
-      host: 'localhost',
-      port: 8080,
+      host: host,
+      port: port,
     });
     
     // 确保 Memory 集合存在
     await ensureMemoryCollection();
-    console.log('✅ Weaviate 初始化成功');
+    console.log('Weaviate 初始化成功');
   } catch (error) {
-    console.error('❌ Weaviate 初始化失败:', error);
+    console.error('Weaviate 初始化失败:', error);
     throw error;
   }
 }
@@ -67,14 +77,14 @@ async function ensureMemoryCollection() {
     try {
       const memory = collections.get('Memory');
       await memory.config.get();
-      console.log('✅ Memory 集合已存在');
+      console.log('Memory 集合已存在');
     } catch (error) {
       // 集合不存在，创建新集合
       console.log('📝 创建 Memory 集合...');
       await collections.create({
         name: 'Memory',
         vectorizers: weaviate.configure.vectorizer.text2VecOllama({
-          apiEndpoint: 'http://ollama:11434',
+          apiEndpoint: OLLAMA_URL || 'http://localhost:11434',
           model: 'nomic-embed-text'
         }),
         properties: [
@@ -85,10 +95,10 @@ async function ensureMemoryCollection() {
           { name: 'what_to_avoid', dataType: weaviate.configure.dataType.TEXT }
         ]
       });
-      console.log('✅ Memory 集合创建成功');
+      console.log('Memory 集合创建成功');
     }
   } catch (error) {
-    console.error('❌ 集合初始化失败:', error);
+    console.error('集合初始化失败:', error);
     throw error;
   }
 }
@@ -102,7 +112,7 @@ async function aoSend(process: string, tags: { name: string; value: string }[], 
 
 // Helpers
 async function embedWithOllama(text: string): Promise<number[]> {
-  const r = await fetch(`${OLLAMA_URL}/api/embeddings`, {
+  const r = await fetch(`${OLLAMA_URL || 'http://localhost:11434'}/api/embeddings`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ model: 'nomic-embed-text', prompt: text })
@@ -187,10 +197,10 @@ function encryptGCM(plaintext: Buffer, key: Buffer) {
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 
-app.get('/health', (_req, res) => res.json({ ok: true }));
+app.get('/health', (_req: Request, res: Response) => res.json({ ok: true }));
 
 // Chat: RAG + LLM + AO save + Weaviate sync
-app.post('/chat', async (req, res) => {
+app.post('/chat', async (req: Request, res: Response) => {
   try {
     const { wallet, user_input } = req.body as { wallet: string; user_input: string };
     if (!wallet || !user_input) return res.status(400).json({ error: 'wallet,user_input required' });
@@ -198,9 +208,9 @@ app.post('/chat', async (req, res) => {
     const hits = await weaviateTopK(user_input, 5);
     const objects = hits.objects || [];
 
-    const previous_convos = objects.map(o => o.properties.conversation_summary).filter(Boolean);
-    const what_worked = objects.map(o => o.properties.what_worked).filter(Boolean);
-    const what_to_avoid = objects.map(o => o.properties.what_to_avoid).filter(Boolean);
+    const previous_convos = objects.map((o: any) => o.properties.conversation_summary).filter(Boolean);
+    const what_worked = objects.map((o: any) => o.properties.what_worked).filter(Boolean);
+    const what_to_avoid = objects.map((o: any) => o.properties.what_to_avoid).filter(Boolean);
     const conversation_hit = objects[0]?.properties?.conversation || '';
 
     const episodic_memory_prompt = `You are a helpful AI Assistant. Answer the user's questions to the best of your ability.\nYou recall similar conversations with the user, here are the details:\n\nCurrent Conversation Match: ${conversation_hit}\nPrevious Conversations: ${previous_convos.join(' | ')}\nWhat has worked well: ${what_worked.join(' ')}\nWhat to avoid: ${what_to_avoid.join(' ')}\n\nUse these memories as context for your response to the user.`;
@@ -219,7 +229,7 @@ app.post('/chat', async (req, res) => {
       input: user_input,
       answer,
       topk: objects.length,
-      summary: objects.slice(0, 3).map(o => o.properties.conversation_summary).join(' | ')
+      summary: objects.slice(0, 3).map((o: any) => o.properties.conversation_summary).join(' | ')
     };
     const saved = await aoSend(MEMORY_PROCESS_ID!, [
       { name: 'Action', value: 'Mem.Save' },
@@ -247,7 +257,7 @@ app.post('/chat', async (req, res) => {
 });
 
 // API: 保存记忆到向量数据库
-app.post('/api/memory/save', async (req, res) => {
+app.post('/api/memory/save', async (req: Request, res: Response) => {
   try {
     const { 
       conversation, 
@@ -290,7 +300,7 @@ app.post('/api/memory/save', async (req, res) => {
 });
 
 // API: 查询相关记忆
-app.post('/api/memory/query', async (req, res) => {
+app.post('/api/memory/query', async (req: Request, res: Response) => {
   try {
     const { query, limit = 5 } = req.body;
 
@@ -299,7 +309,7 @@ app.post('/api/memory/query', async (req, res) => {
     }
 
     const results = await weaviateTopK(query, limit);
-    const memories = results.objects.map(obj => ({
+    const memories = results.objects.map((obj: any) => ({
       id: obj.uuid,
       score: obj.metadata?.score || 0,
       conversation: obj.properties.conversation,
@@ -321,7 +331,7 @@ app.post('/api/memory/query', async (req, res) => {
 });
 
 // API: 高级记忆保存（支持 LangChain 消息格式）
-app.post('/api/memory/save-advanced', async (req, res) => {
+app.post('/api/memory/save-advanced', async (req: Request, res: Response) => {
   try {
     const { messages, user_id = 'default_user' } = req.body;
 
@@ -373,8 +383,125 @@ app.post('/api/memory/save-advanced', async (req, res) => {
   }
 });
 
+// API: 从 AO 进程获取对话历史并保存到向量数据库
+app.post('/api/memory/save-from-ao', async (req: Request, res: Response) => {
+  try {
+    const { wallet, ao_process_id } = req.body;
+
+    if (!wallet || !ao_process_id) {
+      return res.status(400).json({ error: 'wallet and ao_process_id are required' });
+    }
+
+    // 从 AO 进程获取用户对话历史
+    const aoResult = await aoSend(ao_process_id, [
+      { name: 'Action', value: 'SaveConversationMemory' }
+    ]);
+
+    const aoResponse = aoResult.Messages?.[0]?.Data;
+    if (!aoResponse) {
+      return res.status(500).json({ error: 'Failed to get response from AO process' });
+    }
+
+    let conversationData;
+    try {
+      conversationData = JSON.parse(aoResponse);
+    } catch (e) {
+      return res.status(500).json({ error: 'Invalid JSON response from AO process' });
+    }
+
+    if (!conversationData.success || !conversationData.conversations) {
+      return res.status(500).json({ error: 'No conversation data found in AO process' });
+    }
+
+    const conversations = conversationData.conversations;
+    if (conversations.length === 0) {
+      return res.json({ 
+        success: true, 
+        message: 'No conversations to save',
+        conversation_count: 0
+      });
+    }
+
+    // 将 AO 对话历史格式转换为 LangChain 消息格式
+    const messages = [];
+    for (const conv of conversations) {
+      if (conv.Human && conv.Human.trim()) {
+        messages.push({
+          type: 'human',
+          content: conv.Human
+        });
+      }
+      if (conv.AI && conv.AI.trim()) {
+        messages.push({
+          type: 'ai', 
+          content: conv.AI
+        });
+      }
+    }
+
+    if (messages.length === 0) {
+      return res.json({ 
+        success: true, 
+        message: 'No valid messages to save',
+        conversation_count: 0
+      });
+    }
+
+    // 转换为 LangChain 消息格式
+    const langchainMessages = messages.map(msg => {
+      switch (msg.type?.toLowerCase()) {
+        case 'human':
+        case 'user':
+          return new HumanMessage(msg.content);
+        case 'ai':
+        case 'assistant':
+          return new AIMessage(msg.content);
+        case 'system':
+          return new SystemMessage(msg.content);
+        default:
+          return new HumanMessage(msg.content);
+      }
+    });
+
+    // 使用高级反思功能保存到向量数据库
+    const result = await addEpisodicMemory(
+      langchainMessages,
+      wclient,
+      wallet, // 使用 wallet 地址作为 user_id
+      OPENAI_API_KEY!,
+      OPENAI_MODEL!
+    );
+
+    if (result.success) {
+      return res.json({
+        success: true,
+        id: result.id,
+        reflection: result.reflection,
+        user_id: wallet,
+        conversation_count: conversations.length,
+        message_count: messages.length,
+        original_ao_data: {
+          user_id: conversationData.user_id,
+          conversation_count: conversationData.conversation_count
+        }
+      });
+    } else {
+      return res.status(500).json({
+        success: false,
+        error: result.error || 'Failed to save memory to vector database'
+      });
+    }
+
+  } catch (e: any) {
+    console.error('Save from AO error:', e);
+    return res.status(500).json({ 
+      error: 'Internal server error: ' + e.message 
+    });
+  }
+});
+
 // API: 高级记忆查询（支持用户 ID 和系统提示生成）
-app.post('/api/memory/recall', async (req, res) => {
+app.post('/api/memory/recall', async (req: Request, res: Response) => {
   try {
     const { query, user_id = 'default_user', limit = 1, alpha = 0.5 } = req.body;
 
@@ -397,7 +524,7 @@ app.post('/api/memory/recall', async (req, res) => {
     return res.json({
       success: true,
       user_id,
-      memory: memory.objects?.map(obj => ({
+      memory: memory.objects?.map((obj: any) => ({
         id: obj.uuid,
         score: obj.metadata?.score || 0,
         conversation: obj.properties.conversation,
@@ -420,7 +547,7 @@ app.post('/api/memory/recall', async (req, res) => {
 });
 
 // Export: check → snapshot → encrypt → Arweave
-app.post('/export', async (req, res) => {
+app.post('/export', async (req: Request, res: Response) => {
   try {
     const { wallet } = req.body as { wallet: string };
     if (!wallet) return res.status(400).json({ error: 'wallet required' });
@@ -456,15 +583,13 @@ app.post('/export', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 8787;
-
 // 初始化并启动服务器
 async function start() {
   try {
     await initWeaviate();
-    app.listen(Number(PORT), () => console.log(`🚀 Gateway server running on :${PORT}`));
+    app.listen(Number(PORT), () => console.log(`Gateway server running on :${PORT}`));
   } catch (error) {
-    console.error('💥 Failed to start server:', error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 }

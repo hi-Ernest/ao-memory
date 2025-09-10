@@ -4,24 +4,28 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only server.ts",
+    "dev": "tsc && node dist/server.js",
     "start": "node dist/server.js",
     "build": "tsc -p .",
-    "init:weaviate": "ts-node scripts/initWeaviate.ts",
-    "test:weaviate": "ts-node test-weaviate.ts",
-    "test:api": "ts-node test-api.ts",
-    "test:advanced": "ts-node test-advanced.ts"
+    "check-env": "node check-env.js",
+    "init:weaviate": "ts-node --esm scripts/initWeaviate.ts",
+    "test:weaviate": "ts-node --esm test-weaviate.ts",
+    "test:api": "ts-node --esm test-api.ts",
+    "test:advanced": "ts-node --esm test-advanced.ts"
   },
   "dependencies": {
+    "@langchain/core": "^0.2.31",
+    "@langchain/openai": "^0.2.8",
     "@permaweb/aoconnect": "^0.0.55",
     "arweave": "^1.14.4",
+    "dotenv": "^17.2.2",
     "express": "^4.19.2",
     "openai": "^4.56.0",
-    "weaviate-client": "^3.8.1",
-    "@langchain/core": "^0.2.31",
-    "@langchain/openai": "^0.2.8"
+    "weaviate-client": "^3.8.1"
   },
   "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.3.1",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.6.3"

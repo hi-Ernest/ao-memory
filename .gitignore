@@ -25,6 +25,9 @@ dist-ssr
 *.sw?
 
 # env
-.env*
+.env
+.env.local
+.env.*.local
+!env.example
 
 memory-bank

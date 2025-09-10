@@ -1,7 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ChatBox from "./components/ChatBox";
 import WalletConnectButton from "./components/WalletConnectButton";
-import AttestationSection from "./components/AttestationSection";
+import TabSwitcher from "./components/TabSwitcher";
+import MemoryMarketplace from "./components/MemoryMarketplace";
+import type { MemoryItem } from "./types/memory";
+import { message as antdMessage } from "antd";
 
 interface AttestationInfo {
   runtimeMeasurement: string;
@@ -9,224 +12,497 @@ interface AttestationInfo {
   attestedBy: string[];
 }
 
-const App: React.FC = () => {
-  const [attestation, setAttestation] = useState<AttestationInfo | null>(null);
+// Pixel cloud component
+const PixelCloud: React.FC<{ top: string; animationDuration: string }> = ({ top, animationDuration }) => (
+  <div style={{
+    position: "absolute",
+    top,
+    left: 0,
+    width: "64px",
+    height: "32px",
+    background: `
+      #ffffff,
+      linear-gradient(90deg, transparent 0px, transparent 8px, #ffffff 8px, #ffffff 56px, transparent 56px),
+      linear-gradient(0deg, transparent 0px, transparent 8px, #ffffff 8px, #ffffff 24px, transparent 24px)
+    `,
+    imageRendering: "pixelated",
+    animation: `cloudMove ${animationDuration} linear infinite`,
+    zIndex: 1
+  }} />
+);
 
-  console.log("App component rendering...");
+// Pixel character component
+const PixelCharacter: React.FC<{ bottom: string; left: string }> = ({ bottom, left }) => (
+  <div style={{
+    position: "absolute",
+    bottom,
+    left,
+    width: "16px",
+    height: "16px",
+    background: "#ffffff",
+    imageRendering: "pixelated",
+    animation: "run 0.5s infinite",
+    zIndex: 2
+  }} />
+);
+
+// Falling pixel block component
+const FallingBlock: React.FC<{ 
+  left: string; 
+  delay: string; 
+  duration: string; 
+  color: string;
+  size: number;
+  animationType?: string;
+}> = ({ left, delay, duration, color, size, animationType = "blockFall" }) => (
+  <div style={{
+    position: "absolute",
+    top: 0,
+    left,
+    width: `${size}px`,
+    height: `${size}px`,
+    background: color,
+    border: "2px solid #000000",
+    imageRendering: "pixelated",
+    animation: `${animationType} ${duration} linear infinite`,
+    animationDelay: delay,
+    zIndex: 1,
+    boxShadow: "2px 2px 0px rgba(0, 0, 0, 0.3)"
+  }} />
+);
+
+const App: React.FC = () => {
+  const [, setAttestation] = useState<AttestationInfo | null>(null);
+  const [blocks, setBlocks] = useState<React.ReactNode[]>([]);
+  const [activeTab, setActiveTab] = useState<'chat' | 'marketplace'>('chat');
+  const [userBalance, setUserBalance] = useState(500); // Mock user balance in AO coins
+  const [isFullscreenChat, setIsFullscreenChat] = useState(false);
+  const [isFullscreenMarketplace, setIsFullscreenMarketplace] = useState(false);
+
+  // Generate random falling blocks
+  const generateBlocks = (count: number = 30) => {
+    const newBlocks = [];
+    const colors = ["#ffffff", "#ffff00", "#00ff00", "#00ffff", "#ff00ff", "#ffa500", "#ff6b6b", "#4ecdc4"];
+    const sizes = [12, 16, 20, 24, 28];
+    const animations = ["blockFall", "blockFallWobble"];
+    
+    for (let i = 0; i < count; i++) {
+      newBlocks.push(
+        <FallingBlock
+          key={`block-${Date.now()}-${i}`}
+          left={`${Math.random() * 100}%`}
+          delay={`${Math.random() * 2}s`}
+          duration={`${2 + Math.random() * 3}s`}
+          color={colors[Math.floor(Math.random() * colors.length)]}
+          size={sizes[Math.floor(Math.random() * sizes.length)]}
+          animationType={animations[Math.floor(Math.random() * animations.length)]}
+        />
+      );
+    }
+    return newBlocks;
+  };
+
+  // Initialize blocks and set up continuous generation
+  useEffect(() => {
+    setBlocks(generateBlocks());
+    
+    const interval = setInterval(() => {
+      setBlocks(prevBlocks => [
+        ...prevBlocks,
+        ...generateBlocks(3) // Add 3 new blocks every interval
+      ]);
+    }, 1000);
+
+    // Clean up old blocks periodically to prevent memory leaks
+    const cleanup = setInterval(() => {
+      setBlocks(prevBlocks => prevBlocks.slice(-50)); // Keep only last 50 blocks
+    }, 10000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(cleanup);
+    };
+  }, []);
+
+  // Handle memory purchase
+  const handlePurchaseMemory = (memory: MemoryItem) => {
+    if (userBalance >= memory.price) {
+      setUserBalance(prev => prev - memory.price);
+      antdMessage.success(`Successfully purchased "${memory.title}" for $${memory.price} AOM!`);
+      
+      // Mark memory as owned (in real app, this would update backend)
+      memory.isOwned = true;
+    } else {
+      antdMessage.error(`Insufficient balance! You need $${memory.price} AOM but only have $${userBalance} AOM.`);
+    }
+  };
+
+  // Handle memory import
+  const handleImportMemory = (memory: MemoryItem) => {
+    antdMessage.success(`"${memory.title}" has been imported to your AI assistant!`);
+    // In real app, this would integrate the memory into the AI's knowledge base
+  };
 
   return (
     <div style={{ 
       minHeight: "100vh", 
-      background: "linear-gradient(135deg, #1a1f35 0%, #2d3748 50%, #1a202c 100%)",
+      background: "#ff3333",
       position: "relative",
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+      fontFamily: "'Press Start 2P', cursive",
       overflow: "hidden"
     }}>
-      {/* Dark forest/mountain background effect */}
+      {/* Falling blocks */}
+      {blocks}
+      
+      {/* Animated pixel clouds */}
+      <PixelCloud top="10%" animationDuration="20s" />
+      <PixelCloud top="15%" animationDuration="15s" />
+      <PixelCloud top="25%" animationDuration="25s" />
+      <PixelCloud top="70%" animationDuration="18s" />
+      <PixelCloud top="75%" animationDuration="22s" />
+      
+      {/* Running pixel characters */}
+      <PixelCharacter bottom="200px" left="calc(20% + 100px)" />
+      <PixelCharacter bottom="200px" left="calc(20% + 120px)" />
+      
+      {/* AO Logo */}
       <div style={{
         position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: `
-          radial-gradient(circle at 20% 80%, rgba(34, 197, 194, 0.1) 0%, transparent 50%),
-          radial-gradient(circle at 80% 20%, rgba(79, 172, 254, 0.1) 0%, transparent 50%),
-          radial-gradient(circle at 40% 40%, rgba(16, 185, 129, 0.05) 0%, transparent 50%)
-        `,
-        pointerEvents: "none"
-      }} />
-      
-      {/* Animated particles/stars effect */}
-      <div style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: `
-          repeating-linear-gradient(
-            45deg,
-            transparent,
-            transparent 2px,
-            rgba(34, 197, 194, 0.03) 2px,
-            rgba(34, 197, 194, 0.03) 4px
-          )
-        `,
-        pointerEvents: "none",
-        animation: "float 20s ease-in-out infinite"
-      }} />
-      
-      <WalletConnectButton />
-      
-      {/* Left Navigation */}
-      <div style={{
-        position: "absolute",
-        left: 20,
-        top: "50%",
-        transform: "translateY(-50%)",
+        top: "20px",
+        left: "20px",
         zIndex: 10
       }}>
         <div style={{
-          background: "rgba(31, 41, 55, 0.8)",
-          border: "1px solid rgba(34, 197, 194, 0.3)",
-          borderRadius: 16,
-          padding: "20px 16px",
-          backdropFilter: "blur(10px)"
+          width: "60px",
+          height: "60px",
+          background: "#ffffff",
+          border: "3px solid #000000",
+          borderRadius: "50%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "16px",
+          fontWeight: "bold",
+          color: "#ff3333"
         }}>
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            marginBottom: 16,
-            color: "#22c5c2",
-            fontSize: "14px",
-            fontWeight: 600
-          }}>
-            <div style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "#ef4444",
-              marginRight: 8
-            }} />
-            Build
-          </div>
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            color: "#64748b",
-            fontSize: "14px",
-            fontWeight: 500
-          }}>
-            <div style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "transparent",
-              border: "1px solid #64748b",
-              marginRight: 8
-            }} />
-            Explore
-          </div>
+          AO
         </div>
       </div>
-      
-      <div style={{ 
-        position: "relative", 
-        zIndex: 1,
-        padding: "80px 20px 120px",
-        maxWidth: 900,
-        margin: "0 auto",
-        textAlign: "center"
+
+      {/* Top Navigation */}
+      <nav style={{
+        position: "absolute",
+        top: "20px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        display: "flex",
+        gap: "30px",
+        zIndex: 10
       }}>
-        <h1 style={{ 
-          color: "#22c5c2",
-          fontSize: "4rem",
-          fontWeight: 800,
-          marginBottom: 60,
-          letterSpacing: "-0.025em",
-          lineHeight: 1.1,
-          textShadow: "0 0 30px rgba(34, 197, 194, 0.5), 0 0 60px rgba(34, 197, 194, 0.3)",
-          animation: "glow 2s ease-in-out infinite alternate"
+      </nav>
+      
+      <WalletConnectButton />
+      
+      {/* Main content frame */}
+      {isFullscreenChat ? (
+        // Fullscreen Chat Layout
+        <div style={{
+          position: "absolute",
+          top: "0",
+          left: "0",
+          right: "0",
+          bottom: "0",
+          zIndex: 20,
+          display: "flex",
+          flexDirection: "column"
         }}>
-          Build Memories
-        </h1>
-        
-        <div style={{ 
-          display: "flex", 
-          justifyContent: "center", 
-          gap: 32, 
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-          marginBottom: 60
+          {/* Title bar in fullscreen */}
+          <div style={{
+            background: "rgba(255, 51, 51, 0.95)",
+            padding: "20px",
+            borderBottom: "4px solid #000000"
+          }}>
+            <h1 style={{
+              fontSize: "clamp(16px, 4vw, 32px)",
+              color: "#ffffff",
+              textAlign: "center",
+              margin: 0,
+              letterSpacing: "4px",
+              lineHeight: 1.2,
+              textShadow: "4px 4px 0px #000000",
+              animation: "blink 2s infinite"
+            }}>
+              MEMORY AGENTS ON AO
+            </h1>
+          </div>
+          
+          {/* Fullscreen Chat */}
+          <div style={{
+            flex: 1,
+            padding: "20px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center"
+          }}>
+            <div style={{ width: "90%", height: "100%", maxWidth: "1200px" }}>
+              <ChatBox 
+                onAttestationUpdate={setAttestation} 
+                onToggleFullscreen={() => setIsFullscreenChat(false)}
+                isFullscreen={true}
+              />
+            </div>
+          </div>
+        </div>
+      ) : isFullscreenMarketplace ? (
+        // Fullscreen Marketplace Layout
+        <div style={{
+          position: "absolute",
+          top: "0",
+          left: "0",
+          right: "0",
+          bottom: "0",
+          zIndex: 20,
+          display: "flex",
+          flexDirection: "column"
         }}>
-          <ChatBox onAttestationUpdate={setAttestation} />
+          {/* Title bar in fullscreen */}
+          <div style={{
+            background: "rgba(255, 51, 51, 0.95)",
+            padding: "20px",
+            borderBottom: "4px solid #000000"
+          }}>
+            <h1 style={{
+              fontSize: "clamp(16px, 4vw, 32px)",
+              color: "#ffffff",
+              textAlign: "center",
+              margin: 0,
+              letterSpacing: "4px",
+              lineHeight: 1.2,
+              textShadow: "4px 4px 0px #000000",
+              animation: "blink 2s infinite"
+            }}>
+              MEMORY AGENTS ON AO
+            </h1>
+          </div>
+          
+          {/* Fullscreen Marketplace */}
+          <div style={{
+            flex: 1,
+            padding: "20px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center"
+          }}>
+            <div style={{ width: "95%", height: "100%" }}>
+              <MemoryMarketplace
+                userBalance={userBalance}
+                onPurchase={handlePurchaseMemory}
+                onImport={handleImportMemory}
+                onToggleFullscreen={() => setIsFullscreenMarketplace(false)}
+                isFullscreen={true}
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        // Normal Layout
+        <div style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "90%",
+          maxWidth: "1200px",
+          height: "80%",
+          zIndex: 5
+        }}>
+        {/* Main title frame */}
+        <div style={{
+          border: "4px solid #000000",
+          background: "transparent",
+          padding: "20px",
+          marginBottom: "20px",
+          position: "relative"
+        }}>
+          {/* Corner decorations */}
+          <div style={{
+            position: "absolute",
+            top: "-4px",
+            left: "-4px",
+            width: "12px",
+            height: "12px",
+            background: "#000000"
+          }} />
+          <div style={{
+            position: "absolute",
+            top: "-4px",
+            right: "-4px",
+            width: "12px",
+            height: "12px",
+            background: "#000000"
+          }} />
+          <div style={{
+            position: "absolute",
+            bottom: "-4px",
+            left: "-4px",
+            width: "12px",
+            height: "12px",
+            background: "#000000"
+          }} />
+          <div style={{
+            position: "absolute",
+            bottom: "-4px",
+            right: "-4px",
+            width: "12px",
+            height: "12px",
+            background: "#000000"
+          }} />
+
+          <h1 style={{
+            fontSize: "clamp(16px, 4vw, 32px)",
+            color: "#ffffff",
+            textAlign: "center",
+            margin: 0,
+            letterSpacing: "4px",
+            lineHeight: 1.2,
+            textShadow: "4px 4px 0px #000000",
+            animation: "blink 2s infinite"
+          }}>
+            MEMORY AGENTS ON AO
+          </h1>
         </div>
 
-        {/* Bottom Action Buttons */}
+        {/* Content Area with Sidebar */}
         <div style={{
+          height: "calc(100% - 80px)",
           display: "flex",
-          justifyContent: "center",
-          gap: 16,
-          flexWrap: "wrap"
+          gap: "20px"
         }}>
-          <button style={{
-            background: "transparent",
-            border: "1px solid rgba(34, 197, 194, 0.5)",
-            borderRadius: 25,
-            padding: "12px 24px",
-            color: "#22c5c2",
-            fontSize: "14px",
-            fontWeight: 500,
-            cursor: "pointer",
-            backdropFilter: "blur(10px)",
-            transition: "all 0.3s ease",
-            boxShadow: "0 0 20px rgba(34, 197, 194, 0.2)"
+          {/* Left Sidebar */}
+          <div style={{
+            width: "240px",
+            background: "rgba(0, 150, 255, 0.8)",
+            border: "4px solid #000000",
+            display: "flex",
+            flexDirection: "column",
+            position: "relative"
           }}>
-            Share Memory
-          </button>
-          <button style={{
-            background: "transparent",
-            border: "1px solid rgba(34, 197, 194, 0.5)",
-            borderRadius: 25,
-            padding: "12px 24px",
-            color: "#22c5c2",
-            fontSize: "14px",
-            fontWeight: 500,
-            cursor: "pointer",
-            backdropFilter: "blur(10px)",
-            transition: "all 0.3s ease",
-            boxShadow: "0 0 20px rgba(34, 197, 194, 0.2)"
+            {/* Corner decorations */}
+            <div style={{
+              position: "absolute",
+              top: "-4px",
+              left: "-4px",
+              width: "12px",
+              height: "12px",
+              background: "#000000"
+            }} />
+            <div style={{
+              position: "absolute",
+              top: "-4px",
+              right: "-4px",
+              width: "12px",
+              height: "12px",
+              background: "#000000"
+            }} />
+            <div style={{
+              position: "absolute",
+              bottom: "-4px",
+              left: "-4px",
+              width: "12px",
+              height: "12px",
+              background: "#000000"
+            }} />
+            <div style={{
+              position: "absolute",
+              bottom: "-4px",
+              right: "-4px",
+              width: "12px",
+              height: "12px",
+              background: "#000000"
+            }} />
+            
+            {/* Tab Switcher */}
+            <TabSwitcher activeTab={activeTab} onTabChange={setActiveTab} />
+            
+            {/* Import/Export buttons for chat mode */}
+            {activeTab === 'chat' && (
+              <div style={{
+                padding: "20px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px"
+              }}>
+                <button className="pixel-button register" style={{
+                  fontSize: "8px",
+                  padding: "8px 12px",
+                  width: "100%"
+                }}>
+                  IMPORT MEMORY
+                </button>
+                <button className="pixel-button code-conduct" style={{
+                  fontSize: "8px",
+                  padding: "8px 12px",
+                  width: "100%"
+                }}>
+                  EXPORT MEMORY
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Main Content */}
+          <div style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column"
           }}>
-            Load Memory
-          </button>
-          <button style={{
-            background: "transparent",
-            border: "1px solid rgba(34, 197, 194, 0.5)",
-            borderRadius: 25,
-            padding: "12px 24px",
-            color: "#22c5c2",
-            fontSize: "14px",
-            fontWeight: 500,
-            cursor: "pointer",
-            backdropFilter: "blur(10px)",
-            transition: "all 0.3s ease",
-            boxShadow: "0 0 20px rgba(34, 197, 194, 0.2)"
-          }}>
-            Download Memory
-          </button>
-          <button style={{
-            background: "transparent",
-            border: "1px solid rgba(34, 197, 194, 0.5)",
-            borderRadius: 25,
-            padding: "12px 24px",
-            color: "#22c5c2",
-            fontSize: "14px",
-            fontWeight: 500,
-            cursor: "pointer",
-            backdropFilter: "blur(10px)",
-            transition: "all 0.3s ease",
-            boxShadow: "0 0 20px rgba(34, 197, 194, 0.2)"
-          }}>
-            Clear Memory
-          </button>
+            {activeTab === 'chat' ? (
+              <ChatBox 
+                onAttestationUpdate={setAttestation} 
+                onToggleFullscreen={() => setIsFullscreenChat(true)}
+                isFullscreen={false}
+              />
+            ) : (
+              <MemoryMarketplace
+                userBalance={userBalance}
+                onPurchase={handlePurchaseMemory}
+                onImport={handleImportMemory}
+                onToggleFullscreen={() => setIsFullscreenMarketplace(true)}
+                isFullscreen={false}
+              />
+            )}
+          </div>
         </div>
-      </div>
-      
-      {/* AttestationSection positioned absolutely */}
+        </div>
+      )}
+
+      {/* Bottom scrolling text */}
       <div style={{
         position: "absolute",
-        right: 20,
-        top: "50%",
-        transform: "translateY(-50%)",
-        zIndex: 5
+        bottom: "20px",
+        left: 0,
+        right: 0,
+        overflow: "hidden",
+        whiteSpace: "nowrap",
+        background: "rgba(255, 255, 255, 0.1)",
+        padding: "10px 0",
+        zIndex: 1
       }}>
-        <AttestationSection 
-          runtimeMeasurement={attestation?.runtimeMeasurement}
-          tlsFingerprint={attestation?.tlsFingerprint}
-          attestedBy={attestation?.attestedBy}
-        />
+        <div style={{
+          display: "inline-block",
+          paddingLeft: "100%",
+          animation: "cloudMove 20s linear infinite",
+          fontSize: "10px",
+          color: "#ffffff",
+          letterSpacing: "2px"
+        }}>
+          Build. Innovate. Get rewarded. Build. Innovate. Get rewarded. Build. Innovate. Get rewarded.
+        </div>
       </div>
+
+      {/* Running characters at bottom */}
+      <PixelCharacter bottom="80px" left="calc(80% + 50px)" />
+      <PixelCharacter bottom="80px" left="calc(90% + 80px)" />
     </div>
   );
 };

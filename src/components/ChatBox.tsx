@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Input, Button, message as antdMessage } from "antd";
+import { message as antdMessage } from "antd";
 import { useWallet } from "../contexts/WalletContext";
 import { message as aoMessage, dryrun, createDataItemSigner } from '@permaweb/aoconnect';
 import { config } from "../config";
@@ -18,12 +18,14 @@ interface AttestationInfo {
 
 interface ChatBoxProps {
   onAttestationUpdate?: (attestation: AttestationInfo) => void;
+  onToggleFullscreen?: () => void;
+  isFullscreen?: boolean;
 }
 
 const DEFAULT_CHAT: ChatItem[] = [
   {
     role: "tip",
-    message: "Hi, I’m Apus Assistant! Ask me anything below — let’s get started!",
+    message: "> SYSTEM READY\n> AI AGENT INITIALIZED\n> ENTER YOUR QUERY BELOW:",
     timestamp: Date.now(),
   },
 ];
@@ -93,7 +95,7 @@ const pollForResult = async (reference: string): Promise<{ data: string; attesta
   }
 };
 
-const ChatBox: React.FC<ChatBoxProps> = ({ onAttestationUpdate }) => {
+const ChatBox: React.FC<ChatBoxProps> = ({ onAttestationUpdate: _, onToggleFullscreen, isFullscreen }) => {
   const { checkLogin } = useWallet();
   const [chatHistory, setChatHistory] = useState<ChatItem[]>(DEFAULT_CHAT);
   const [prompt, setPrompt] = useState("");
@@ -114,23 +116,38 @@ const ChatBox: React.FC<ChatBoxProps> = ({ onAttestationUpdate }) => {
     
     setSavingMemory(true);
     try {
-      // use browser wallet signer
-      const signer = createDataItemSigner((window as any).arweaveWallet);
+      // 获取用户钱包地址
+      const wallet = await (window as any).arweaveWallet.getActiveAddress();
       
-      // Send request to save conversation history to AO process
-      await aoMessage({
-        process: processId,
-        tags: [
-          { name: 'Action', value: 'SaveConversationMemory' },
-        ],
-        data: JSON.stringify(chatHistory),
-        signer,
+      // 调用 Gateway API 来保存记忆
+      const response = await fetch(`${config.gatewayApiUrl}/api/memory/save-from-ao`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          wallet: wallet,
+          ao_process_id: processId
+        }),
       });
+
+      const result = await response.json();
       
-      antdMessage.success("Conversation memory saved successfully!");
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP error! status: ${response.status}`);
+      }
+
+      if (result.success) {
+        antdMessage.success(
+          `Memory saved successfully! Processed ${result.conversation_count} conversations (${result.message_count} messages) to vector database.`
+        );
+      } else {
+        throw new Error(result.error || "Failed to save memory");
+      }
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : "Failed to save memory";
-      antdMessage.error(errorMessage);
+      console.error('Save memory error:', e);
+      antdMessage.error(`Save memory failed: ${errorMessage}`);
     } finally {
       setSavingMemory(false);
     }
@@ -186,24 +203,24 @@ const ChatBox: React.FC<ChatBoxProps> = ({ onAttestationUpdate }) => {
       // Update attestation if available
       if (aiReply.attestation) {
         // handle complex attestation structure
-        let attestationData = aiReply.attestation;
-        let attestationJWT = '';
+        // let attestationData = aiReply.attestation;
+        // let attestationJWT = '';
         
-        if (Array.isArray(attestationData) && attestationData.length > 0) {
-          for (const item of attestationData) {
-            if (Array.isArray(item) && item.length === 2 && item[0] === 'JWT') {
-              attestationJWT = item[1];
-              break;
-            }
-          }
-        }
+        // if (Array.isArray(attestationData) && attestationData.length > 0) {
+        //   for (const item of attestationData) {
+        //     if (Array.isArray(item) && item.length === 2 && item[0] === 'JWT') {
+        //       attestationJWT = item[1];
+        //       break;
+        //     }
+        //   }
+        // }
         
-        const newAttestation = {
-          runtimeMeasurement: attestationJWT || JSON.stringify(attestationData),
-          tlsFingerprint: aiReply.reference || "N/A",
-          attestedBy: [...config.defaultAttestedBy]
-        };
-        onAttestationUpdate?.(newAttestation);
+        // const newAttestation = {
+        //   runtimeMeasurement: attestationJWT || JSON.stringify(attestationData),
+        //   tlsFingerprint: aiReply.reference || "N/A",
+        //   attestedBy: [...config.defaultAttestedBy]
+        // };
+        // onAttestationUpdate?.(newAttestation);
       }
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : "Failed to send message";
@@ -216,52 +233,116 @@ const ChatBox: React.FC<ChatBoxProps> = ({ onAttestationUpdate }) => {
 
   return (
     <div style={{ 
-      width: 700, 
-      background: "rgba(31, 41, 55, 0.8)", 
-      borderRadius: 20, 
-      boxShadow: "0 0 40px rgba(34, 197, 194, 0.2)", 
-      padding: 32,
-      border: "1px solid rgba(34, 197, 194, 0.3)",
-      backdropFilter: "blur(20px)",
-      animation: "pulse 3s ease-in-out infinite"
+      width: "100%", 
+      height: "100%",
+      background: "#000000", 
+      border: "4px solid #ffffff",
+      boxShadow: "8px 8px 0px rgba(0, 0, 0, 0.5)",
+      fontFamily: "'Press Start 2P', cursive",
+      imageRendering: "pixelated",
+      display: "flex",
+      flexDirection: "column",
+      position: "relative"
     }}>
+      {/* Corner decorations */}
+      <div style={{
+        position: "absolute",
+        top: "-4px",
+        left: "-4px",
+        width: "12px",
+        height: "12px",
+        background: "#ffffff",
+        zIndex: 10
+      }} />
+      <div style={{
+        position: "absolute",
+        top: "-4px",
+        right: "-4px",
+        width: "12px",
+        height: "12px",
+        background: "#ffffff",
+        zIndex: 10
+      }} />
+      <div style={{
+        position: "absolute",
+        bottom: "-4px",
+        left: "-4px",
+        width: "12px",
+        height: "12px",
+        background: "#ffffff",
+        zIndex: 10
+      }} />
+      <div style={{
+        position: "absolute",
+        bottom: "-4px",
+        right: "-4px",
+        width: "12px",
+        height: "12px",
+        background: "#ffffff",
+        zIndex: 10
+      }} />
+      
+      {/* Terminal header */}
+      <div style={{
+        background: "#ffffff",
+        color: "#000000",
+        padding: "8px 12px",
+        fontSize: "10px",
+        borderBottom: "2px solid #000000",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center"
+      }}>
+        <span>AI_AGENT_TERMINAL</span>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          {onToggleFullscreen && (
+            <button
+              onClick={onToggleFullscreen}
+              className="pixel-button"
+              style={{
+                fontSize: "6px",
+                padding: "4px 8px",
+                background: "#ffff00",
+                color: "#000000",
+                border: "2px solid #000000",
+                cursor: "pointer"
+              }}
+            >
+              {isFullscreen ? "MINIMIZE" : "FULLSCREEN"}
+            </button>
+          )}
+          <div style={{ display: "flex", gap: "4px" }}>
+            <div style={{ width: "8px", height: "8px", background: "#ff0000" }} />
+            <div style={{ width: "8px", height: "8px", background: "#ffff00" }} />
+            <div style={{ width: "8px", height: "8px", background: "#00ff00" }} />
+          </div>
+        </div>
+      </div>
+
       <div
         ref={chatListRef}
         style={{
-          height: 400,
-          marginBottom: 24,
+          flex: 1,
           overflowY: "auto",
-          padding: "20px 0",
-          background: "transparent"
+          padding: "16px",
+          background: "#000000",
+          fontFamily: "'Press Start 2P', cursive",
+          minHeight: 0
         }}
       >
         {chatHistory.map((item, idx) => (
           <div key={idx} style={{ 
-            textAlign: item.role === "user" ? "right" : "left", 
-            margin: "12px 0",
-            padding: "8px 0"
+            margin: "8px 0",
+            color: item.role === "user" ? "#00ff00" : item.role === "tip" ? "#ffff00" : "#ffffff",
+            fontSize: "8px",
+            lineHeight: "1.5",
+            whiteSpace: "pre-wrap"
           }}>
             <div style={{
-              display: "inline-block",
-              maxWidth: "75%",
-              padding: "14px 20px",
-              borderRadius: "16px",
-              background: item.role === "user" 
-                ? "rgba(34, 197, 194, 0.2)" 
-                : item.role === "tip" 
-                ? "rgba(100, 116, 139, 0.2)" 
-                : "rgba(55, 65, 81, 0.4)",
-              color: item.role === "user" ? "#22c5c2" : "#e2e8f0",
-              fontSize: "15px",
-              lineHeight: "1.6",
-              boxShadow: item.role === "user" 
-                ? "0 0 20px rgba(34, 197, 194, 0.3)" 
-                : "0 4px 12px rgba(0, 0, 0, 0.2)",
-              border: item.role === "user" 
-                ? "1px solid rgba(34, 197, 194, 0.4)" 
-                : "1px solid rgba(55, 65, 81, 0.5)",
-              backdropFilter: "blur(10px)"
+              display: "block",
+              marginBottom: "4px"
             }}>
+              {item.role === "user" ? "> USER: " : item.role === "tip" ? "> SYSTEM: " : "> AI: "}
               {item.message}
             </div>
           </div>
@@ -271,78 +352,82 @@ const ChatBox: React.FC<ChatBoxProps> = ({ onAttestationUpdate }) => {
       {/* Request Reference Display */}
       {requestReference && (
         <div style={{ 
-          marginBottom: 20, 
-          padding: "12px 16px", 
-          background: "rgba(34, 197, 194, 0.1)", 
-          borderRadius: 12,
-          fontSize: "13px",
-          color: "#22c5c2",
-          border: "1px solid rgba(34, 197, 194, 0.2)"
+          padding: "8px 16px", 
+          background: "#333333", 
+          borderTop: "2px solid #ffffff",
+          fontSize: "8px",
+          color: "#ffff00",
+          fontFamily: "'Press Start 2P', cursive"
         }}>
-          <strong>Request Reference:</strong> {requestReference}
+          REF: {requestReference}
         </div>
       )}
       
       <div style={{ 
-        background: "rgba(55, 65, 81, 0.4)", 
-        borderRadius: 16, 
-        padding: "20px",
-        border: "1px solid rgba(34, 197, 194, 0.2)",
-        backdropFilter: "blur(10px)"
+        background: "#000000", 
+        borderTop: "2px solid #ffffff",
+        padding: "16px"
       }}>
-        <Input.TextArea
+        <textarea
           value={prompt}
           onChange={e => setPrompt(e.target.value)}
-          placeholder="What do you know?"
-          autoSize={{ minRows: 3, maxRows: 5 }}
+          placeholder="> ENTER COMMAND..."
           disabled={loading}
-          onPressEnter={e => { if (!e.shiftKey) { e.preventDefault(); handleSend(); } }}
+          onKeyDown={e => { 
+            if (e.key === 'Enter' && !e.shiftKey) { 
+              e.preventDefault(); 
+              handleSend(); 
+            } 
+          }}
           style={{
-            border: "none",
-            background: "transparent",
-            fontSize: "15px",
+            width: "100%",
+            height: "60px",
+            border: "2px solid #ffffff",
+            background: "#000000",
+            fontSize: "8px",
             resize: "none",
-            color: "#e2e8f0"
+            color: "#00ff00",
+            fontFamily: "'Press Start 2P', cursive",
+            padding: "8px",
+            outline: "none",
+            boxSizing: "border-box"
           }}
         />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
-          <Button 
-            onClick={handleSaveMemory} 
-            loading={savingMemory} 
+        <div style={{ 
+          display: "flex", 
+          justifyContent: "space-between", 
+          alignItems: "center", 
+          marginTop: "12px",
+          gap: "8px"
+        }}>
+          <button 
+            onClick={handleSaveMemory}
             disabled={savingMemory || loading}
+            className="pixel-button"
             style={{
-              background: "transparent",
-              border: "1px solid rgba(34, 197, 194, 0.4)",
-              borderRadius: "12px",
-              height: "44px",
-              padding: "0 24px",
-              fontWeight: 500,
-              color: "#22c5c2",
-              boxShadow: "0 0 20px rgba(34, 197, 194, 0.2)",
-              backdropFilter: "blur(10px)"
+              fontSize: "6px",
+              padding: "8px 12px",
+              background: savingMemory ? "#666666" : "#ffffff",
+              color: "#000000",
+              opacity: savingMemory || loading ? 0.6 : 1
             }}
           >
-            Save Memory
-          </Button>
-          <Button 
-            type="primary" 
-            onClick={handleSend} 
-            loading={loading} 
+            {savingMemory ? "SAVING..." : "SAVE MEM"}
+          </button>
+          <button 
+            onClick={handleSend}
             disabled={loading}
+            className="pixel-button"
             style={{
-              background: "rgba(34, 197, 194, 0.3)",
-              border: "1px solid rgba(34, 197, 194, 0.6)",
-              borderRadius: "12px",
-              height: "44px",
-              padding: "0 32px",
-              fontWeight: 600,
-              color: "#ffffff",
-              boxShadow: "0 0 30px rgba(34, 197, 194, 0.4)",
-              backdropFilter: "blur(10px)"
+              fontSize: "6px",
+              padding: "8px 16px",
+              background: loading ? "#666666" : "#00ff00",
+              color: "#000000",
+              opacity: loading ? 0.6 : 1
             }}
           >
-            📤
-          </Button>
+            {loading ? "PROC..." : "SEND >>"}
+          </button>
         </div>
       </div>
     </div>
