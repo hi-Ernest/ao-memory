@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { message as antdMessage } from "antd";
 import { config } from "../config";
 import { message as aoMessage, createDataItemSigner } from '@permaweb/aoconnect';
+import { useWallet } from "../contexts/WalletContext";
 
 interface ChatItem {
   role: "user" | "assistant" | "tip";
@@ -26,9 +27,6 @@ const DEFAULT_CHAT: ChatItem[] = [
 
 // use ao processId
 const processId = config.aoProcessId;
-// use browser wallet signer
-const signer = createDataItemSigner((window as any).arweaveWallet);
-
 
 const ChatBoxV2: React.FC<ChatBoxV2Props> = ({ 
   onToggleFullscreen, 
@@ -36,6 +34,7 @@ const ChatBoxV2: React.FC<ChatBoxV2Props> = ({
   chatHistory: externalChatHistory,
   setChatHistory: externalSetChatHistory
 }) => {
+  const { checkLogin } = useWallet();
   // 使用外部传入的状态，如果没有则使用内部状态作为回退
   const [internalChatHistory, setInternalChatHistory] = useState<ChatItem[]>(DEFAULT_CHAT);
   const chatHistory = externalChatHistory || internalChatHistory;
@@ -43,7 +42,53 @@ const ChatBoxV2: React.FC<ChatBoxV2Props> = ({
   
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
+  const [savingMemory, setSavingMemory] = useState(false);
   const chatListRef = useRef<HTMLDivElement>(null);
+  
+  // use browser wallet signer
+  const signer = createDataItemSigner((window as any).arweaveWallet);
+
+  const handleSaveMemory = async () => {
+    if (!checkLogin()) return;
+    
+    setSavingMemory(true);
+    try {
+      // 获取用户钱包地址
+      const wallet = await (window as any).arweaveWallet.getActiveAddress();
+      
+      // 调用 Gateway API 来保存记忆
+      const response = await fetch(`${config.gatewayApiUrl}/api/memory/save-from-ao`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          wallet: wallet,
+          ao_process_id: processId
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP error! status: ${response.status}`);
+      }
+
+      if (result.success) {
+        antdMessage.success(
+          `Memory saved successfully! Processed ${result.conversation_count} conversations (${result.message_count} messages) to vector database.`
+        );
+      } else {
+        throw new Error(result.error || "Failed to save memory");
+      }
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : "Failed to save memory";
+      console.error('Save memory error:', e);
+      antdMessage.error(`Save memory failed: ${errorMessage}`);
+    } finally {
+      setSavingMemory(false);
+    }
+  };
 
 
   // Auto-scroll to bottom when chatHistory changes
@@ -315,10 +360,25 @@ const ChatBoxV2: React.FC<ChatBoxV2Props> = ({
         />
         <div style={{ 
           display: "flex", 
-          justifyContent: "flex-end", 
+          justifyContent: "space-between", 
           alignItems: "center", 
-          marginTop: "12px"
+          marginTop: "12px",
+          gap: "8px"
         }}>
+          <button 
+            onClick={handleSaveMemory}
+            disabled={savingMemory || loading}
+            className="pixel-button"
+            style={{
+              fontSize: "6px",
+              padding: "8px 12px",
+              background: savingMemory ? "#666666" : "#ffffff",
+              color: "#000000",
+              opacity: savingMemory || loading ? 0.6 : 1
+            }}
+          >
+            {savingMemory ? "SAVING..." : "SAVE MEM"}
+          </button>
           <button 
             onClick={handleSend}
             disabled={loading}

@@ -26,7 +26,7 @@ const TabSwitcher: React.FC<TabSwitcherProps> = ({ activeTab, onTabChange }) => 
           textAlign: 'center'
         }}
       >
-        💬 CHAT
+        CHAT WITH APUS
       </button>
       
       <button
@@ -42,7 +42,7 @@ const TabSwitcher: React.FC<TabSwitcherProps> = ({ activeTab, onTabChange }) => 
           textAlign: 'center'
         }}
       >
-        🧠 MEMORY AI
+        CHAT WITH MEMO
       </button>
       
       <button
@@ -58,7 +58,7 @@ const TabSwitcher: React.FC<TabSwitcherProps> = ({ activeTab, onTabChange }) => 
           textAlign: 'center'
         }}
       >
-        🏪 MEMORY MARKET
+      MEMO MARKET
       </button>
     </div>
   );

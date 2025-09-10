@@ -4,6 +4,9 @@ import ChatBoxV2 from "./components/ChatBoxV2";
 import WalletConnectButton from "./components/WalletConnectButton";
 import TabSwitcher from "./components/TabSwitcher";
 import MemoryMarketplace from "./components/MemoryMarketplace";
+import LoadingPage from "./components/LoadingPage";
+import LogoDisplay from "./components/LogoDisplay";
+import MemoMascot from "./components/MemoMascot";
 import type { MemoryItem } from "./types/memory";
 import { message as antdMessage } from "antd";
 
@@ -103,6 +106,7 @@ const App: React.FC = () => {
   const [isFullscreenChat, setIsFullscreenChat] = useState(false);
   const [isFullscreenChatV2, setIsFullscreenChatV2] = useState(false);
   const [isFullscreenMarketplace, setIsFullscreenMarketplace] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Loading state
   
   // 聊天历史状态管理 - 提升到App级别以保持状态
   const [chatHistory, setChatHistory] = useState<ChatItem[]>(DEFAULT_CHAT);
@@ -172,12 +176,23 @@ const App: React.FC = () => {
     // In real app, this would integrate the memory into the AI's knowledge base
   };
 
+  // Handle loading completion
+  const handleLoadingComplete = () => {
+    setIsLoading(false);
+  };
+
+  // Show loading page first
+  if (isLoading) {
+    return <LoadingPage onLoadingComplete={handleLoadingComplete} />;
+  }
+
   return (
     <div style={{ 
       minHeight: "100vh", 
       background: "#ff3333",
       position: "relative",
-      fontFamily: "'Press Start 2P', cursive",
+      fontFamily: "var(--pixel-font-family)",
+      fontWeight: "var(--pixel-font-weight)",
       overflow: "hidden"
     }}>
       {/* Falling blocks */}
@@ -194,28 +209,33 @@ const App: React.FC = () => {
       <PixelCharacter bottom="200px" left="calc(20% + 100px)" />
       <PixelCharacter bottom="200px" left="calc(20% + 120px)" />
       
-      {/* AO Logo */}
+      {/* Floating Memo Decorations */}
+      <div style={{
+        position: "absolute",
+        top: "15%",
+        right: "10%",
+        zIndex: 2
+      }}>
+        <MemoMascot size={40} animated={true} showBubbles={true} />
+      </div>
+      
+      <div style={{
+        position: "absolute",
+        bottom: "25%",
+        left: "5%",
+        zIndex: 2
+      }}>
+        <MemoMascot size={32} animated={true} showBubbles={false} />
+      </div>
+      
+      {/* Logo with Memo */}
       <div style={{
         position: "absolute",
         top: "20px",
         left: "20px",
         zIndex: 10
       }}>
-        <div style={{
-          width: "60px",
-          height: "60px",
-          background: "#ffffff",
-          border: "3px solid #000000",
-          borderRadius: "50%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "16px",
-          fontWeight: "bold",
-          color: "#ff3333"
-        }}>
-          AO
-        </div>
+        <LogoDisplay size="small" />
       </div>
 
       {/* Top Navigation */}
@@ -261,7 +281,7 @@ const App: React.FC = () => {
               textShadow: "4px 4px 0px #000000",
               animation: "blink 2s infinite"
             }}>
-              MEMORY AGENTS ON AO
+              MEMO SWIMMING IN THE AO
             </h1>
           </div>
           
@@ -312,7 +332,7 @@ const App: React.FC = () => {
               textShadow: "4px 4px 0px #000000",
               animation: "blink 2s infinite"
             }}>
-              MEMORY AGENTS ON AO
+              MEMO SWIMMING IN THE AO
             </h1>
           </div>
           
@@ -362,7 +382,7 @@ const App: React.FC = () => {
               textShadow: "4px 4px 0px #000000",
               animation: "blink 2s infinite"
             }}>
-              MEMORY AGENTS ON AO
+              MEMO SWIMMING IN THE AO
             </h1>
           </div>
           
@@ -449,7 +469,7 @@ const App: React.FC = () => {
             textShadow: "4px 4px 0px #000000",
             animation: "blink 2s infinite"
           }}>
-            MEMORY AGENTS ON AO
+            MEMO SWIMMING IN THE AO
           </h1>
         </div>
 
