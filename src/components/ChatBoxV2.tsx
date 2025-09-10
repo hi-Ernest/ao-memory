@@ -3,6 +3,8 @@ import { message as antdMessage } from "antd";
 import { config } from "../config";
 import { message as aoMessage, createDataItemSigner } from '@permaweb/aoconnect';
 import { useWallet } from "../contexts/WalletContext";
+import SaveMemoryModal from "./SaveMemoryModal";
+import type { ConversationMemory, ChatMessage } from '../types/memory';
 
 interface ChatItem {
   role: "user" | "assistant" | "tip";
@@ -20,7 +22,7 @@ interface ChatBoxV2Props {
 const DEFAULT_CHAT: ChatItem[] = [
   {
     role: "tip",
-    message: "> MEMORY AI SYSTEM READY\n> ENHANCED MEMORY PROCESSING INITIALIZED\n> ENTER YOUR MEMORY-RELATED QUERY BELOW:",
+    message: "> MEMORY AI SYSTEM READY\n> ENHANCED MEMORY PROCESSING INITIALIZED\n> CONNECT YOUR WALLET TO START CHATTING WITH MEMO:",
     timestamp: Date.now(),
   },
 ];
@@ -34,7 +36,7 @@ const ChatBoxV2: React.FC<ChatBoxV2Props> = ({
   chatHistory: externalChatHistory,
   setChatHistory: externalSetChatHistory
 }) => {
-  const { checkLogin } = useWallet();
+  const { checkLogin, activeAddress } = useWallet();
   // 使用外部传入的状态，如果没有则使用内部状态作为回退
   const [internalChatHistory, setInternalChatHistory] = useState<ChatItem[]>(DEFAULT_CHAT);
   const chatHistory = externalChatHistory || internalChatHistory;
@@ -43,6 +45,7 @@ const ChatBoxV2: React.FC<ChatBoxV2Props> = ({
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [savingMemory, setSavingMemory] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
   const chatListRef = useRef<HTMLDivElement>(null);
   
   // use browser wallet signer
@@ -51,40 +54,58 @@ const ChatBoxV2: React.FC<ChatBoxV2Props> = ({
   const handleSaveMemory = async () => {
     if (!checkLogin()) return;
     
+    // 检查是否有有效的对话内容
+    const validMessages = chatHistory.filter(msg => msg.role !== "tip");
+    if (validMessages.length < 2) {
+      antdMessage.warning("Need at least one conversation to save as memory");
+      return;
+    }
+    
+    // 打开保存记忆的弹出窗口
+    setShowSaveModal(true);
+  };
+
+  // 实际保存记忆到 AO Process
+  const handleSaveMemoryToAO = async (memoryData: Partial<ConversationMemory>) => {
     setSavingMemory(true);
     try {
       // 获取用户钱包地址
       const wallet = await (window as any).arweaveWallet.getActiveAddress();
       
-      // 调用 Gateway API 来保存记忆
-      const response = await fetch(`${config.gatewayApiUrl}/api/memory/save-from-ao`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          wallet: wallet,
-          ao_process_id: processId
-        }),
+      // 生成唯一ID
+      const memoryId = `memory_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // 准备发送到 AO Process 的数据
+      const aoMemoryData = {
+        ...memoryData,
+        id: memoryId,
+        walletAddress: wallet
+      };
+
+      // 发送到 AO Process
+      await aoMessage({
+        process: processId,
+        tags: [
+          { name: "Action", value: "SaveConversationMemory" },
+          { name: "MemoryId", value: memoryId },
+          { name: "WalletAddress", value: wallet }
+        ],
+        signer: signer,
+        data: JSON.stringify(aoMemoryData)
       });
 
-      const result = await response.json();
+      antdMessage.success(`Memory "${memoryData.title}" saved successfully!`);
       
-      if (!response.ok) {
-        throw new Error(result.error || `HTTP error! status: ${response.status}`);
+      // 如果是公开的，提示用户可以在marketplace查看
+      if (memoryData.isPublic) {
+        antdMessage.info("Your memory will be available in the marketplace for others to discover!");
       }
-
-      if (result.success) {
-        antdMessage.success(
-          `Memory saved successfully! Processed ${result.conversation_count} conversations (${result.message_count} messages) to vector database.`
-        );
-      } else {
-        throw new Error(result.error || "Failed to save memory");
-      }
+      
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : "Failed to save memory";
       console.error('Save memory error:', e);
       antdMessage.error(`Save memory failed: ${errorMessage}`);
+      throw e;
     } finally {
       setSavingMemory(false);
     }
@@ -98,8 +119,34 @@ const ChatBoxV2: React.FC<ChatBoxV2Props> = ({
     }
   }, [chatHistory]);
 
+  // Update system message when wallet connection changes
+  useEffect(() => {
+    const isConnected = !!activeAddress;
+    const currentSystemMessage = chatHistory.find(item => item.role === "tip");
+    
+    if (currentSystemMessage) {
+      const newMessage = isConnected 
+        ? "> MEMORY AI SYSTEM READY\n> WALLET CONNECTED\n> ENTER YOUR MEMORY-RELATED QUERY BELOW:"
+        : "> MEMORY AI SYSTEM READY\n> ENHANCED MEMORY PROCESSING INITIALIZED\n> CONNECT YOUR WALLET TO START CHATTING WITH MEMO:";
+      
+      if (currentSystemMessage.message !== newMessage) {
+        setChatHistory(prev => prev.map((item, idx) => 
+          idx === 0 && item.role === "tip" 
+            ? { ...item, message: newMessage, timestamp: Date.now() }
+            : item
+        ));
+      }
+    }
+  }, [activeAddress, chatHistory, setChatHistory]);
+
 
   const handleSend = async () => {
+    // 首先验证钱包登录
+    if (!checkLogin()) {
+      antdMessage.warning("Please connect your wallet first");
+      return;
+    }
+
     if (!prompt.trim()) {
       antdMessage.warning("Please enter a message");
       return;
@@ -208,20 +255,29 @@ const ChatBoxV2: React.FC<ChatBoxV2Props> = ({
   };
 
   return (
-    <div style={{ 
-      width: "100%", 
-      height: "100%",
-      background: "#000000", 
-      border: "4px solid #ffffff",
-      boxShadow: "8px 8px 0px rgba(0, 0, 0, 0.5)",
-      fontFamily: "var(--pixel-font-family)",
-      fontWeight: "var(--pixel-font-weight)",
-      imageRendering: "pixelated",
-      display: "flex",
-      flexDirection: "column",
-      position: "relative"
-    }}>
-      {/* Corner decorations */}
+    <>
+      <SaveMemoryModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={handleSaveMemoryToAO}
+        conversationData={chatHistory as ChatMessage[]}
+        walletAddress={activeAddress || ''}
+      />
+      
+      <div style={{ 
+        width: "100%", 
+        height: "100%",
+        background: "#000000", 
+        border: "4px solid #ffffff",
+        boxShadow: "8px 8px 0px rgba(0, 0, 0, 0.5)",
+        fontFamily: "var(--pixel-font-family)",
+        fontWeight: "var(--pixel-font-weight)",
+        imageRendering: "pixelated",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative"
+      }}>
+        {/* Corner decorations */}
       <div style={{
         position: "absolute",
         top: "-4px",
@@ -381,21 +437,22 @@ const ChatBoxV2: React.FC<ChatBoxV2Props> = ({
           </button>
           <button 
             onClick={handleSend}
-            disabled={loading}
+            disabled={loading || !activeAddress}
             className="pixel-button"
             style={{
               fontSize: "6px",
               padding: "8px 16px",
-              background: loading ? "#666666" : "#00ff00",
+              background: (loading || !activeAddress) ? "#666666" : "#00ff00",
               color: "#000000",
-              opacity: loading ? 0.6 : 1
+              opacity: (loading || !activeAddress) ? 0.6 : 1
             }}
           >
-            {loading ? "PROCESSING..." : "SEND >>"}
+            {loading ? "PROCESSING..." : !activeAddress ? "CONNECT WALLET" : "SEND >>"}
           </button>
         </div>
       </div>
     </div>
+    </>
   );
 };
 

@@ -15,6 +15,29 @@ export interface MemoryItem {
   createdAt: string;
 }
 
+// 对话记忆专用数据类型
+export interface ConversationMemory {
+  id: string;
+  title: string;
+  description?: string;
+  theme?: string;
+  tags?: string[];
+  price: number;
+  isPublic: boolean; // 是否公开到marketplace
+  walletAddress: string;
+  conversationData: ChatMessage[]; // 完整对话数据
+  summary?: string; // 自动生成的摘要
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 聊天消息接口
+export interface ChatMessage {
+  role: "user" | "assistant" | "tip";
+  message: string;
+  timestamp: number;
+}
+
 export interface MemoryTheme {
   id: string;
   name: string;

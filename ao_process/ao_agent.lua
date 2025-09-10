@@ -2,10 +2,11 @@ local json = require("json")
 
 -- Backend AO Process Logic (Core Flow from section 2.5)
 
-CurrentReference = CurrentReference or 0 -- Initialize or use existing reference counter
-Tasks = Tasks or {}                      -- Your process's state where results are stored
+CurrentReference = CurrentReference or 0          -- Initialize or use existing reference counter
+Tasks = Tasks or {}                               -- Your process's state where results are stored
 Balances = Balances or "0"
-Talks = Talks or {}                      -- Store balance information for each reference
+Talks = Talks or {}                               -- Store balance information for each reference
+ConversationMemories = ConversationMemories or {} -- Store conversation memories
 
 APUS_ROUTER = "TED2PpCVx0KbkQtzEYBo0TRAO-HPJlpCMmUzch9ZL2g"
 
@@ -32,6 +33,179 @@ Handlers.add(
             Action = "SaveTalked",
             TalkId = talk.id,
             Data = json.encode(talk)
+        })
+    end
+)
+
+-- Handler to save conversation memories
+Handlers.add(
+    "SaveConversationMemory",
+    Handlers.utils.hasMatchingTag("Action", "SaveConversationMemory"),
+    function(msg)
+        if not msg.Data or msg.Data == "" then
+            msg.reply({ Error = "Memory data cannot be empty" })
+            return
+        end
+
+        local memoryData = json.decode(msg.Data)
+        if not memoryData then
+            msg.reply({ Error = "Invalid memory data format" })
+            return
+        end
+
+        -- Validate required fields
+        if not memoryData.title or memoryData.title == "" then
+            msg.reply({ Error = "Memory title is required" })
+            return
+        end
+
+        if not memoryData.conversationData or #memoryData.conversationData == 0 then
+            msg.reply({ Error = "Conversation data is required" })
+            return
+        end
+
+        -- Create memory record
+        local memory = {
+            id = memoryData.id or ("memory_" .. #ConversationMemories + 1),
+            title = memoryData.title,
+            description = memoryData.description or "",
+            theme = memoryData.theme or "ai-assistant",
+            tags = memoryData.tags or {},
+            price = memoryData.price or 0,
+            isPublic = memoryData.isPublic or false,
+            walletAddress = memoryData.walletAddress or msg.From,
+            conversationData = memoryData.conversationData,
+            summary = memoryData.summary or "",
+            createdAt = memoryData.createdAt or os.date("!%Y-%m-%dT%H:%M:%SZ"),
+            updatedAt = memoryData.updatedAt or os.date("!%Y-%m-%dT%H:%M:%SZ"),
+            creator = msg.From,
+            timestamp = msg.Timestamp
+        }
+
+        -- Save to memories table
+        table.insert(ConversationMemories, memory)
+
+        -- Reply with success
+        msg.reply({
+            Action = "ConversationMemorySaved",
+            MemoryId = memory.id,
+            IsPublic = memory.isPublic,
+            Data = json.encode({
+                id = memory.id,
+                title = memory.title,
+                isPublic = memory.isPublic,
+                price = memory.price,
+                createdAt = memory.createdAt
+            })
+        })
+    end
+)
+
+-- Handler to get user's conversation memories
+Handlers.add(
+    "GetConversationMemories",
+    Handlers.utils.hasMatchingTag("Action", "GetConversationMemories"),
+    function(msg)
+        local walletAddress = msg.Tags.WalletAddress or msg.From
+        local userMemories = {}
+
+        -- Filter memories by wallet address
+        for _, memory in ipairs(ConversationMemories) do
+            if memory.walletAddress == walletAddress then
+                table.insert(userMemories, {
+                    id = memory.id,
+                    title = memory.title,
+                    description = memory.description,
+                    theme = memory.theme,
+                    tags = memory.tags,
+                    price = memory.price,
+                    isPublic = memory.isPublic,
+                    summary = memory.summary,
+                    createdAt = memory.createdAt,
+                    updatedAt = memory.updatedAt,
+                    conversationCount = #memory.conversationData
+                })
+            end
+        end
+
+        msg.reply({
+            Action = "ConversationMemoriesResponse",
+            Count = #userMemories,
+            Data = json.encode(userMemories)
+        })
+    end
+)
+
+-- Handler to get public conversation memories for marketplace
+Handlers.add(
+    "GetPublicMemories",
+    Handlers.utils.hasMatchingTag("Action", "GetPublicMemories"),
+    function(msg)
+        local publicMemories = {}
+
+        -- Filter only public memories
+        for _, memory in ipairs(ConversationMemories) do
+            if memory.isPublic then
+                table.insert(publicMemories, {
+                    id = memory.id,
+                    title = memory.title,
+                    description = memory.description,
+                    theme = memory.theme,
+                    tags = memory.tags,
+                    price = memory.price,
+                    summary = memory.summary,
+                    createdAt = memory.createdAt,
+                    conversationCount = #memory.conversationData,
+                    author = memory.walletAddress,
+                    rating = 4.5, -- Default rating, can be enhanced later
+                    downloads = 0 -- Can be tracked separately
+                })
+            end
+        end
+
+        msg.reply({
+            Action = "PublicMemoriesResponse",
+            Count = #publicMemories,
+            Data = json.encode(publicMemories)
+        })
+    end
+)
+
+-- Handler to get specific memory details
+Handlers.add(
+    "GetMemoryDetails",
+    Handlers.utils.hasMatchingTag("Action", "GetMemoryDetails"),
+    function(msg)
+        local memoryId = msg.Tags.MemoryId
+        if not memoryId then
+            msg.reply({ Error = "MemoryId is required" })
+            return
+        end
+
+        local memory = nil
+        for _, mem in ipairs(ConversationMemories) do
+            if mem.id == memoryId then
+                memory = mem
+                break
+            end
+        end
+
+        if not memory then
+            msg.reply({ Error = "Memory not found" })
+            return
+        end
+
+        -- Check if requester can access this memory
+        local canAccess = memory.isPublic or memory.walletAddress == msg.From
+
+        if not canAccess then
+            msg.reply({ Error = "Access denied to private memory" })
+            return
+        end
+
+        msg.reply({
+            Action = "MemoryDetailsResponse",
+            Data = json.encode(memory)
         })
     end
 )
