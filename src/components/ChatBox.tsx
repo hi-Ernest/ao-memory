@@ -20,6 +20,8 @@ interface ChatBoxProps {
   onAttestationUpdate?: (attestation: AttestationInfo) => void;
   onToggleFullscreen?: () => void;
   isFullscreen?: boolean;
+  chatHistory?: ChatItem[];
+  setChatHistory?: React.Dispatch<React.SetStateAction<ChatItem[]>>;
 }
 
 const DEFAULT_CHAT: ChatItem[] = [
@@ -95,9 +97,19 @@ const pollForResult = async (reference: string): Promise<{ data: string; attesta
   }
 };
 
-const ChatBox: React.FC<ChatBoxProps> = ({ onAttestationUpdate: _, onToggleFullscreen, isFullscreen }) => {
+const ChatBox: React.FC<ChatBoxProps> = ({ 
+  onAttestationUpdate: _, 
+  onToggleFullscreen, 
+  isFullscreen,
+  chatHistory: externalChatHistory,
+  setChatHistory: externalSetChatHistory
+}) => {
   const { checkLogin } = useWallet();
-  const [chatHistory, setChatHistory] = useState<ChatItem[]>(DEFAULT_CHAT);
+  // 使用外部传入的状态，如果没有则使用内部状态作为回退
+  const [internalChatHistory, setInternalChatHistory] = useState<ChatItem[]>(DEFAULT_CHAT);
+  const chatHistory = externalChatHistory || internalChatHistory;
+  const setChatHistory = externalSetChatHistory || setInternalChatHistory;
+  
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [requestReference, setRequestReference] = useState<string>('');

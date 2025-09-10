@@ -12,6 +12,8 @@ interface ChatItem {
 interface ChatBoxV2Props {
   onToggleFullscreen?: () => void;
   isFullscreen?: boolean;
+  chatHistory?: ChatItem[];
+  setChatHistory?: React.Dispatch<React.SetStateAction<ChatItem[]>>;
 }
 
 const DEFAULT_CHAT: ChatItem[] = [
@@ -28,8 +30,17 @@ const processId = config.aoProcessId;
 const signer = createDataItemSigner((window as any).arweaveWallet);
 
 
-const ChatBoxV2: React.FC<ChatBoxV2Props> = ({ onToggleFullscreen, isFullscreen }) => {
-  const [chatHistory, setChatHistory] = useState<ChatItem[]>(DEFAULT_CHAT);
+const ChatBoxV2: React.FC<ChatBoxV2Props> = ({ 
+  onToggleFullscreen, 
+  isFullscreen,
+  chatHistory: externalChatHistory,
+  setChatHistory: externalSetChatHistory
+}) => {
+  // 使用外部传入的状态，如果没有则使用内部状态作为回退
+  const [internalChatHistory, setInternalChatHistory] = useState<ChatItem[]>(DEFAULT_CHAT);
+  const chatHistory = externalChatHistory || internalChatHistory;
+  const setChatHistory = externalSetChatHistory || setInternalChatHistory;
+  
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const chatListRef = useRef<HTMLDivElement>(null);

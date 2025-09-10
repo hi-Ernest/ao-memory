@@ -13,6 +13,12 @@ interface AttestationInfo {
   attestedBy: string[];
 }
 
+interface ChatItem {
+  role: "user" | "assistant" | "tip";
+  message: string;
+  timestamp: number;
+}
+
 // Pixel cloud component
 const PixelCloud: React.FC<{ top: string; animationDuration: string }> = ({ top, animationDuration }) => (
   <div style={{
@@ -72,6 +78,23 @@ const FallingBlock: React.FC<{
   }} />
 );
 
+// 默认聊天记录
+const DEFAULT_CHAT: ChatItem[] = [
+  {
+    role: "tip",
+    message: "> SYSTEM READY\n> AI AGENT INITIALIZED\n> ENTER YOUR QUERY BELOW:",
+    timestamp: Date.now(),
+  },
+];
+
+const DEFAULT_CHAT_V2: ChatItem[] = [
+  {
+    role: "tip",
+    message: "> MEMORY AI SYSTEM READY\n> ENHANCED MEMORY PROCESSING INITIALIZED\n> ENTER YOUR MEMORY-RELATED QUERY BELOW:",
+    timestamp: Date.now(),
+  },
+];
+
 const App: React.FC = () => {
   const [, setAttestation] = useState<AttestationInfo | null>(null);
   const [blocks, setBlocks] = useState<React.ReactNode[]>([]);
@@ -80,6 +103,10 @@ const App: React.FC = () => {
   const [isFullscreenChat, setIsFullscreenChat] = useState(false);
   const [isFullscreenChatV2, setIsFullscreenChatV2] = useState(false);
   const [isFullscreenMarketplace, setIsFullscreenMarketplace] = useState(false);
+  
+  // 聊天历史状态管理 - 提升到App级别以保持状态
+  const [chatHistory, setChatHistory] = useState<ChatItem[]>(DEFAULT_CHAT);
+  const [chatV2History, setChatV2History] = useState<ChatItem[]>(DEFAULT_CHAT_V2);
 
   // Generate random falling blocks
   const generateBlocks = (count: number = 30) => {
@@ -251,6 +278,8 @@ const App: React.FC = () => {
                 onAttestationUpdate={setAttestation} 
                 onToggleFullscreen={() => setIsFullscreenChat(false)}
                 isFullscreen={true}
+                chatHistory={chatHistory}
+                setChatHistory={setChatHistory}
               />
             </div>
           </div>
@@ -299,6 +328,8 @@ const App: React.FC = () => {
               <ChatBoxV2 
                 onToggleFullscreen={() => setIsFullscreenChatV2(false)}
                 isFullscreen={true}
+                chatHistory={chatV2History}
+                setChatHistory={setChatV2History}
               />
             </div>
           </div>
@@ -511,11 +542,15 @@ const App: React.FC = () => {
                 onAttestationUpdate={setAttestation} 
                 onToggleFullscreen={() => setIsFullscreenChat(true)}
                 isFullscreen={false}
+                chatHistory={chatHistory}
+                setChatHistory={setChatHistory}
               />
             ) : activeTab === 'chatv2' ? (
               <ChatBoxV2 
                 onToggleFullscreen={() => setIsFullscreenChatV2(true)}
                 isFullscreen={false}
+                chatHistory={chatV2History}
+                setChatHistory={setChatV2History}
               />
             ) : (
               <MemoryMarketplace
