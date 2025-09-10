@@ -4,9 +4,38 @@ local json = require("json")
 
 CurrentReference = CurrentReference or 0 -- Initialize or use existing reference counter
 Tasks = Tasks or {}                      -- Your process's state where results are stored
-Balances = Balances or "0"               -- Store balance information for each reference
+Balances = Balances or "0"
+Talks = Talks or {}                      -- Store balance information for each reference
 
 APUS_ROUTER = "TED2PpCVx0KbkQtzEYBo0TRAO-HPJlpCMmUzch9ZL2g"
+
+Handlers.add(
+    "SaveTalk",
+    Handlers.utils.hasMatchingTag("Action", "SaveTalk"),
+    function(msg)
+        if not msg.Talk or msg.Talk == "" then
+            msg.reply({ Error = "Talk cannot be empty" })
+            return
+        end
+
+        local talk = {
+            id = #Talks + 1,
+            talk = msg.Talk,
+            task = msg.Task,
+            creator = msg.From,
+            timestamp = msg.Timestamp,
+        }
+        table.insert(Talks, talk)
+
+        -- 回复成功
+        msg.reply({
+            Action = "SaveTalked",
+            TalkId = talk.id,
+            Data = json.encode(talk)
+        })
+    end
+)
+
 
 -- Handler to listen for prompts from your frontend
 Handlers.add(

@@ -1,13 +1,13 @@
 export const config = {
   // AO Network Configuration
-  aoProcessId: 'YeMnYYIOVq4A4GoH0CD-f7Y8Xv-LVAQBML8P-nQ1Xh8',
+  aoProcessId: 'eKGX2gHG5wfaEu_P90jBBRMEDS7e819YbwFvkThbG54',
   
   // APUS HyperBEAM Node Configuration
   apusHyperbeamNodeUrl: 'http://72.46.85.207:8734',
   
   // Gateway API Configuration
   gatewayApiUrl: 'http://localhost:8787',
-    
+  
   // App Configuration
   appName: 'AOMemory',
   appLogo: undefined,

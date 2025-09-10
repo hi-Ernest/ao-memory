@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { message as antdMessage } from "antd";
 import { config } from "../config";
+import { message as aoMessage, createDataItemSigner } from '@permaweb/aoconnect';
 
 interface ChatItem {
   role: "user" | "assistant" | "tip";
@@ -20,6 +21,11 @@ const DEFAULT_CHAT: ChatItem[] = [
     timestamp: Date.now(),
   },
 ];
+
+// use ao processId
+const processId = config.aoProcessId;
+// use browser wallet signer
+const signer = createDataItemSigner((window as any).arweaveWallet);
 
 
 const ChatBoxV2: React.FC<ChatBoxV2Props> = ({ onToggleFullscreen, isFullscreen }) => {
@@ -91,6 +97,34 @@ const ChatBoxV2: React.FC<ChatBoxV2Props> = ({ onToggleFullscreen, isFullscreen 
         ]);
 
         antdMessage.success("Memory AI response received");
+
+        const talkData = JSON.stringify({
+          "Human": currentPrompt,
+          "AI": result.response,
+        });
+
+      // Send a message to the AO process, using tags to pass the fields required by the Handler
+      await aoMessage({
+        /*
+          The arweave TxID of the process, this will become the "target".
+          This is the process the message is ultimately sent to.
+        */
+        process: processId,
+        // Tags that the process will use as input.
+        tags: [
+          { name: "Action", value: "SaveTalk" },
+          { name: "Talk", value: talkData },
+          { name: "Task", value: "Memory Chat Conversation" },
+        ],
+        // A signer function used to build the message "signature"
+        signer: signer,
+        //The "data" portion can be the same or additional context
+        data: talkData
+      })
+        .then(console.log)
+        .catch(console.error);
+        
+
       } else {
         throw new Error(result.error || "Failed to get AI response");
       }
