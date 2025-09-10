@@ -13,6 +13,8 @@ export default defineConfig({
     'process.env': {},
     'process.version': '"v16.0.0"',
     'process.platform': '"browser"',
+    'process.browser': 'true',
+    'process.cwd': '"/"',
   },
   resolve: {
     alias: {

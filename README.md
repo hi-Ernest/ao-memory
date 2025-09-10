@@ -5,8 +5,10 @@ A React-based chat application with attestation using AO Network and Arweave Wal
 ## Features
 - Wallet connection with arweave-wallet-kit
 - AI chat powered by AO Network (aoconnect)
+- **NEW: Memory AI ChatV2** - Enhanced AI chat with OpenAI integration and memory-focused prompts
+- Memory marketplace for trading AI memories
 - Real-time attestation display
-- Modern Web3 UI design
+- Modern Web3 UI design with fullscreen support
 - TypeScript support with strict type checking
 - Centralized configuration management
 
@@ -17,6 +19,13 @@ A React-based chat application with attestation using AO Network and Arweave Wal
   - `appName`: Application name
   - `defaultAttestedBy`: Default attestation providers
   - `walletPermissions`: Required wallet permissions
+  - `openaiApiKey`: Your OpenAI API key (for ChatV2 Memory AI features)
+
+### Setting Up Memory AI (ChatV2)
+1. Get an OpenAI API key from [OpenAI Platform](https://platform.openai.com/account/api-keys)
+2. Copy `env.example` to `.env.local`
+3. Add your API key: `REACT_APP_OPENAI_API_KEY=your_api_key_here`
+4. Access the Memory AI by clicking the "🧠 MEMORY AI" tab in the sidebar
 
 ## Available Scripts
 - `npm run dev` - Start development server

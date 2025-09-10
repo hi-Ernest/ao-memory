@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import ChatBox from "./components/ChatBox";
+import ChatBoxV2 from "./components/ChatBoxV2";
 import WalletConnectButton from "./components/WalletConnectButton";
 import TabSwitcher from "./components/TabSwitcher";
 import MemoryMarketplace from "./components/MemoryMarketplace";
@@ -74,9 +75,10 @@ const FallingBlock: React.FC<{
 const App: React.FC = () => {
   const [, setAttestation] = useState<AttestationInfo | null>(null);
   const [blocks, setBlocks] = useState<React.ReactNode[]>([]);
-  const [activeTab, setActiveTab] = useState<'chat' | 'marketplace'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'chatv2' | 'marketplace'>('chat');
   const [userBalance, setUserBalance] = useState(500); // Mock user balance in AO coins
   const [isFullscreenChat, setIsFullscreenChat] = useState(false);
+  const [isFullscreenChatV2, setIsFullscreenChatV2] = useState(false);
   const [isFullscreenMarketplace, setIsFullscreenMarketplace] = useState(false);
 
   // Generate random falling blocks
@@ -253,6 +255,54 @@ const App: React.FC = () => {
             </div>
           </div>
         </div>
+      ) : isFullscreenChatV2 ? (
+        // Fullscreen ChatV2 Layout
+        <div style={{
+          position: "absolute",
+          top: "0",
+          left: "0",
+          right: "0",
+          bottom: "0",
+          zIndex: 20,
+          display: "flex",
+          flexDirection: "column"
+        }}>
+          {/* Title bar in fullscreen */}
+          <div style={{
+            background: "rgba(255, 51, 51, 0.95)",
+            padding: "20px",
+            borderBottom: "4px solid #000000"
+          }}>
+            <h1 style={{
+              fontSize: "clamp(16px, 4vw, 32px)",
+              color: "#ffffff",
+              textAlign: "center",
+              margin: 0,
+              letterSpacing: "4px",
+              lineHeight: 1.2,
+              textShadow: "4px 4px 0px #000000",
+              animation: "blink 2s infinite"
+            }}>
+              MEMORY AGENTS ON AO
+            </h1>
+          </div>
+          
+          {/* Fullscreen ChatV2 */}
+          <div style={{
+            flex: 1,
+            padding: "20px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center"
+          }}>
+            <div style={{ width: "90%", height: "100%", maxWidth: "1200px" }}>
+              <ChatBoxV2 
+                onToggleFullscreen={() => setIsFullscreenChatV2(false)}
+                isFullscreen={true}
+              />
+            </div>
+          </div>
+        </div>
       ) : isFullscreenMarketplace ? (
         // Fullscreen Marketplace Layout
         <div style={{
@@ -424,8 +474,8 @@ const App: React.FC = () => {
             {/* Tab Switcher */}
             <TabSwitcher activeTab={activeTab} onTabChange={setActiveTab} />
             
-            {/* Import/Export buttons for chat mode */}
-            {activeTab === 'chat' && (
+            {/* Import/Export buttons for chat modes */}
+            {(activeTab === 'chat' || activeTab === 'chatv2') && (
               <div style={{
                 padding: "20px",
                 display: "flex",
@@ -460,6 +510,11 @@ const App: React.FC = () => {
               <ChatBox 
                 onAttestationUpdate={setAttestation} 
                 onToggleFullscreen={() => setIsFullscreenChat(true)}
+                isFullscreen={false}
+              />
+            ) : activeTab === 'chatv2' ? (
+              <ChatBoxV2 
+                onToggleFullscreen={() => setIsFullscreenChatV2(true)}
                 isFullscreen={false}
               />
             ) : (

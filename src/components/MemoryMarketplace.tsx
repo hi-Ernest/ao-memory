@@ -54,7 +54,8 @@ const MemoryMarketplace: React.FC<MemoryMarketplaceProps> = ({
       height: '100%',
       background: '#000000',
       border: '4px solid #ffffff',
-      fontFamily: "'Press Start 2P', cursive",
+      fontFamily: "var(--pixel-font-family)",
+      fontWeight: "var(--pixel-font-weight)",
       display: 'flex',
       flexDirection: 'column',
       position: 'relative'
@@ -168,7 +169,8 @@ const MemoryMarketplace: React.FC<MemoryMarketplaceProps> = ({
                 background: '#000000',
                 color: '#00ff00',
                 border: '2px solid #ffffff',
-                fontFamily: "'Press Start 2P', cursive",
+                fontFamily: "var(--pixel-font-family)",
+      fontWeight: "var(--pixel-font-weight)",
                 outline: 'none',
                 boxSizing: 'border-box'
               }}
@@ -194,7 +196,8 @@ const MemoryMarketplace: React.FC<MemoryMarketplaceProps> = ({
                 background: '#000000',
                 color: '#00ff00',
                 border: '2px solid #ffffff',
-                fontFamily: "'Press Start 2P', cursive",
+                fontFamily: "var(--pixel-font-family)",
+      fontWeight: "var(--pixel-font-weight)",
                 outline: 'none'
               }}
             >

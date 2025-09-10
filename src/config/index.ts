@@ -7,7 +7,7 @@ export const config = {
   
   // Gateway API Configuration
   gatewayApiUrl: 'http://localhost:8787',
-  
+    
   // App Configuration
   appName: 'AOMemory',
   appLogo: undefined,

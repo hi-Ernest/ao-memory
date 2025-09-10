@@ -14,7 +14,8 @@ const WalletConnectButton: React.FC = () => {
         showBalance={true}
         accent="#000000"
         style={{
-          fontFamily: "'Press Start 2P', cursive",
+          fontFamily: "var(--pixel-font-family)",
+          fontWeight: "var(--pixel-font-weight)",
           fontSize: "8px",
           background: "#ffffff",
           border: "3px solid #000000",

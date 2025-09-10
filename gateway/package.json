@@ -20,7 +20,9 @@
     "arweave": "^1.14.4",
     "dotenv": "^17.2.2",
     "express": "^4.19.2",
+    "https-proxy-agent": "^7.0.6",
     "openai": "^4.56.0",
+    "undici": "^7.16.0",
     "weaviate-client": "^3.8.1"
   },
   "devDependencies": {

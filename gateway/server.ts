@@ -4,7 +4,9 @@ import Arweave from 'arweave';
 import weaviate from 'weaviate-client';
 import { message, result, createDataItemSigner } from '@permaweb/aoconnect';
 import OpenAI from 'openai';
+import { ChatOpenAI } from '@langchain/openai';
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
+import { ProxyAgent, setGlobalDispatcher } from 'undici';
 import { 
   createReflectionPrompt, 
   formatConversation, 
@@ -17,9 +19,15 @@ import dotenv from 'dotenv';
 // 加载 .env 文件
 dotenv.config();
 
+// 设置代理（如果有）
+if (process.env.HTTPS_PROXY) {
+  setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY));
+  console.log('使用代理:', process.env.HTTPS_PROXY);
+}
+
 // Env
 const {
-  OPENAI_API_KEY,
+  OPENAI_API_KEY = process.env.OPENAI_API_KEY,
   OPENAI_MODEL = 'gpt-4o-mini',
   OLLAMA_URL = 'http://localhost:11434',
   WEAVIATE_URL = 'http://localhost:8080',
@@ -36,6 +44,37 @@ if (!OPENAI_API_KEY || !AO_WALLET_JSON || !MEMORY_PROCESS_ID || !MARKET_PROCESS_
 
 // Clients
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+
+// LangChain ChatOpenAI 配置（将在初始化函数中创建实例）
+let chatModel: ChatOpenAI;
+
+// 初始化 ChatOpenAI 实例
+async function initChatModel() {
+  const chatModelConfig: any = {
+    modelName: OPENAI_MODEL || "gpt-4o-mini", // 使用环境变量中的模型
+    temperature: 0.7,
+    maxRetries: 2,
+    apiKey: OPENAI_API_KEY,
+    timeout: 30000, // 减少超时时间
+  };
+
+  // 如果设置了代理，配置 httpAgent
+  if (process.env.HTTPS_PROXY) {
+    try {
+      const { HttpsProxyAgent } = await import('https-proxy-agent');
+      chatModelConfig.configuration = {
+        httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY)
+      };
+      console.log('为 LangChain 配置代理:', process.env.HTTPS_PROXY);
+    } catch (error) {
+      console.log('代理配置失败:', error);
+    }
+  }
+
+  chatModel = new ChatOpenAI(chatModelConfig);
+  return chatModel;
+}
+
 const arweave = Arweave.init({ host: 'arweave.net', port: 443, protocol: 'https' });
 const aoWallet = JSON.parse(AO_WALLET_JSON!);
 
@@ -195,9 +234,96 @@ function encryptGCM(plaintext: Buffer, key: Buffer) {
 
 // HTTP
 const app = express();
+
+// CORS middleware
+app.use((req: Request, res: Response, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
 app.use(express.json({ limit: '2mb' }));
 
 app.get('/health', (_req: Request, res: Response) => res.json({ ok: true }));
+
+// Simple Chat: LangChain OpenAI proxy for ChatBoxV2
+app.post('/api/simple-chat', async (req: Request, res: Response) => {
+  try {
+    const { message, conversation_history = [] } = req.body as { 
+      message: string; 
+      conversation_history?: Array<{role: string, content: string}> 
+    };
+
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ error: 'Message is required and must be a string' });
+    }
+
+    console.log(OPENAI_API_KEY);
+    console.log(process.env.HTTPS_PROXY);
+    console.log("Preparing translation request...");
+
+    // Build LangChain messages array
+    const messages = [];
+    
+    // System message
+    messages.push(new SystemMessage(
+      'You are an advanced AI memory assistant specialized in helping users with memory-related tasks. Your expertise includes memory palace techniques, spaced repetition, mnemonic devices, memory analysis, and knowledge organization. Be practical and actionable in your advice.'
+    ));
+
+    // Current user message
+    messages.push(new HumanMessage(message));
+
+    // 打印messages
+
+    console.log("Calling OpenAI API...");
+    const response = await chatModel.invoke(messages);
+    
+    const aiResponse = typeof response?.content === "string" 
+      ? response.content 
+      : JSON.stringify(response?.content);
+
+    console.log('LangChain response received successfully');
+
+    return res.json({
+      success: true,
+      response: aiResponse,
+      timestamp: Date.now(),
+      model: OPENAI_MODEL
+    });
+
+  } catch (error: any) {
+    console.error('An error occurred during the chat process:', {
+      name: error?.name,
+      message: error?.message,
+      attemptNumber: error?.attemptNumber,
+      retriesLeft: error?.retriesLeft,
+    });
+
+    // 常见 timeout 提示
+    if (String(error?.message || '').toLowerCase().includes('timeout')) {
+      console.log('Suggestions:');
+      console.log('1) Check if the network can connect to api.openai.com (or use a proxy and set HTTPS_PROXY)');
+      console.log('2) Increase timeout (set to 60000ms, if still timeout, increase again)');
+      console.log('3) If using a custom gateway, confirm that OPENAI_API_BASE_URL is reachable');
+    }
+
+    return res.status(500).json({ 
+      error: 'Failed to process chat request',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      suggestions: String(error?.message || '').toLowerCase().includes('timeout') ? [
+        'Check network connection to api.openai.com',
+        'Consider using HTTPS_PROXY if behind firewall',
+        'Increase timeout if necessary'
+      ] : undefined
+    });
+  }
+});
 
 // Chat: RAG + LLM + AO save + Weaviate sync
 app.post('/chat', async (req: Request, res: Response) => {
@@ -586,6 +712,7 @@ app.post('/export', async (req: Request, res: Response) => {
 // 初始化并启动服务器
 async function start() {
   try {
+    await initChatModel();
     await initWeaviate();
     app.listen(Number(PORT), () => console.log(`Gateway server running on :${PORT}`));
   } catch (error) {

@@ -1,8 +1,8 @@
 import React from 'react';
 
 interface TabSwitcherProps {
-  activeTab: 'chat' | 'marketplace';
-  onTabChange: (tab: 'chat' | 'marketplace') => void;
+  activeTab: 'chat' | 'chatv2' | 'marketplace';
+  onTabChange: (tab: 'chat' | 'chatv2' | 'marketplace') => void;
 }
 
 const TabSwitcher: React.FC<TabSwitcherProps> = ({ activeTab, onTabChange }) => {
@@ -27,6 +27,22 @@ const TabSwitcher: React.FC<TabSwitcherProps> = ({ activeTab, onTabChange }) => 
         }}
       >
         💬 CHAT
+      </button>
+      
+      <button
+        onClick={() => onTabChange('chatv2')}
+        className="pixel-button"
+        style={{
+          fontSize: '8px',
+          padding: '12px 16px',
+          background: activeTab === 'chatv2' ? '#00ff00' : '#ffffff',
+          color: '#000000',
+          border: '3px solid #000000',
+          width: '100%',
+          textAlign: 'center'
+        }}
+      >
+        🧠 MEMORY AI
       </button>
       
       <button

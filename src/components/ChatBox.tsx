@@ -238,7 +238,8 @@ const ChatBox: React.FC<ChatBoxProps> = ({ onAttestationUpdate: _, onToggleFulls
       background: "#000000", 
       border: "4px solid #ffffff",
       boxShadow: "8px 8px 0px rgba(0, 0, 0, 0.5)",
-      fontFamily: "'Press Start 2P', cursive",
+      fontFamily: "var(--pixel-font-family)",
+      fontWeight: "var(--pixel-font-weight)",
       imageRendering: "pixelated",
       display: "flex",
       flexDirection: "column",
@@ -326,7 +327,8 @@ const ChatBox: React.FC<ChatBoxProps> = ({ onAttestationUpdate: _, onToggleFulls
           overflowY: "auto",
           padding: "16px",
           background: "#000000",
-          fontFamily: "'Press Start 2P', cursive",
+          fontFamily: "var(--pixel-font-family)",
+      fontWeight: "var(--pixel-font-weight)",
           minHeight: 0
         }}
       >
@@ -387,7 +389,8 @@ const ChatBox: React.FC<ChatBoxProps> = ({ onAttestationUpdate: _, onToggleFulls
             fontSize: "8px",
             resize: "none",
             color: "#00ff00",
-            fontFamily: "'Press Start 2P', cursive",
+            fontFamily: "var(--pixel-font-family)",
+      fontWeight: "var(--pixel-font-weight)",
             padding: "8px",
             outline: "none",
             boxSizing: "border-box"

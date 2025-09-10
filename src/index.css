@@ -1,19 +1,36 @@
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap');
+
+/* Define pixel font stack with Chinese support */
+@font-face {
+  font-family: 'PixelFont';
+  src: local('SimHei'), local('Microsoft YaHei'), local('PingFang SC'), local('Hiragino Sans GB');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* CSS Variables for consistent pixel fonts */
+:root {
+  --pixel-font-family: 'Press Start 2P', 'Noto Sans SC', 'PixelFont', 'Microsoft YaHei', 'SimHei', monospace;
+  --pixel-font-weight: bold;
+}
 
 body {
   margin: 0;
-  font-family: 'Press Start 2P', cursive;
+  font-family: var(--pixel-font-family);
   background: #ff3333;
   overflow-x: hidden;
   image-rendering: pixelated;
   -ms-interpolation-mode: nearest-neighbor;
+  font-weight: var(--pixel-font-weight);
 }
 
 /* Pixel font styling */
 .pixel-text {
-  font-family: 'Press Start 2P', cursive;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  font-family: var(--pixel-font-family);
+  letter-spacing: 1px;
+  font-weight: var(--pixel-font-weight);
+  text-rendering: geometricPrecision;
 }
 
 /* Pixel border animation */
@@ -121,7 +138,8 @@ body {
 
 /* Pixel button effects */
 .pixel-button {
-  font-family: 'Press Start 2P', cursive;
+  font-family: var(--pixel-font-family);
+  font-weight: var(--pixel-font-weight);
   font-size: 8px;
   padding: 12px 16px;
   border: 3px solid #000000;

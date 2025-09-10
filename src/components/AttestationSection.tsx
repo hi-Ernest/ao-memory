@@ -26,7 +26,8 @@ const AttestationSection: React.FC<AttestationSectionProps> = ({
       width: 280, 
       background: "#000000", 
       border: "3px solid #ffffff", 
-      fontFamily: "'Press Start 2P', cursive",
+      fontFamily: "var(--pixel-font-family)",
+      fontWeight: "var(--pixel-font-weight)",
       boxShadow: "6px 6px 0px rgba(0, 0, 0, 0.5)"
     }}>
       {/* Runtime Measurement Section */}
@@ -47,7 +48,8 @@ const AttestationSection: React.FC<AttestationSectionProps> = ({
           minHeight: "60px"
         }}>
           <div style={{ 
-            fontFamily: "'Press Start 2P', cursive", 
+            fontFamily: "var(--pixel-font-family)",
+      fontWeight: "var(--pixel-font-weight)", 
             fontSize: "5px", 
             color: "#00ff00",
             wordBreak: "break-all",

@@ -38,7 +38,8 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onPurchase, onImport, u
       padding: '16px',
       marginBottom: '16px',
       boxShadow: '4px 4px 0px rgba(0, 0, 0, 0.5)',
-      fontFamily: "'Press Start 2P', cursive",
+      fontFamily: "var(--pixel-font-family)",
+      fontWeight: "var(--pixel-font-weight)",
       position: 'relative'
     }}>
       {/* Featured badge */}
